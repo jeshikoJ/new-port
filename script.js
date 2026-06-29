@@ -25,7 +25,6 @@ requestAnimationFrame(raf);
 // 2. Initialize Three.js Scene with Shadows
 const canvas = document.querySelector('#webgl-canvas');
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x010206, 0.04); 
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.z = 10;
@@ -58,62 +57,30 @@ composer.addPass(renderScene);
 composer.addPass(bloomPass);
 
 // ==========================================
-// 4. PROCEDURAL GRAPHICS GENERATION
+// 4. TEXTURE LOADING (Photorealism)
 // ==========================================
+const textureLoader = new THREE.TextureLoader();
 
-// A. Procedural Noise Texture Generator (Canvas-based)
-function generateNoiseTexture(size, scale, seed, isGasGiant = false) {
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d');
-    const imageData = ctx.createImageData(size, size);
-    const data = imageData.data;
+// Reliable CDN URLs for photorealistic maps
+const textures = {
+    earthColor: textureLoader.load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg'),
+    earthBump: textureLoader.load('https://unpkg.com/three-globe/example/img/earth-topology.png'),
+    earthWater: textureLoader.load('https://unpkg.com/three-globe/example/img/earth-water.png'),
+    earthClouds: textureLoader.load('https://unpkg.com/three-globe/example/img/earth-clouds.png'),
+    nightSky: textureLoader.load('https://unpkg.com/three-globe/example/img/night-sky.png')
+};
 
-    // Simple pseudo-random hash function
-    const hash = (x, y) => {
-        let h = Math.sin(x * 12.9898 + y * 78.233 + seed) * 43758.5453123;
-        return h - Math.floor(h);
-    };
+// Set photorealistic background
+scene.background = textures.nightSky;
 
-    // Very basic value noise generator
-    for (let x = 0; x < size; x++) {
-        for (let y = 0; y < size; y++) {
-            let nx = x / scale;
-            let ny = y / scale;
-            let val = hash(Math.floor(nx), Math.floor(ny));
-            
-            if (isGasGiant) {
-                // Gas giant bands (stretch noise on Y axis)
-                val = hash(Math.floor(nx * 0.1), Math.floor(ny * 2.0));
-                // Add turbulence
-                val += Math.sin(ny * 10) * 0.1; 
-            }
-
-            // Normalize and set grayscale color
-            const color = Math.floor(Math.abs(val) * 255);
-            const index = (x + y * size) * 4;
-            data[index] = color;     // r
-            data[index + 1] = color; // g
-            data[index + 2] = color; // b
-            data[index + 3] = 255;   // a
-        }
-    }
-    
-    ctx.putImageData(imageData, 0, 0);
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    return texture;
-}
-
-// B. Sun GLSL Shader (Boiling Magma)
+// ==========================================
+// 5. THE LIVING SUN (GLSL Shaders)
+// ==========================================
 const sunVertexShader = `
     varying vec2 vUv;
     varying vec3 vPosition;
     uniform float time;
     
-    // Simplex noise function
     vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
     vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
     vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
@@ -167,11 +134,8 @@ const sunVertexShader = `
 
     void main() {
         vUv = uv;
-        
-        // Displace vertices to create solar flares
         float noise = snoise(vec3(position.x * 2.0, position.y * 2.0, position.z * 2.0 + time * 0.5));
         vec3 displacedPosition = position + normal * (noise * 0.15);
-        
         vPosition = displacedPosition;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(displacedPosition, 1.0);
     }
@@ -183,27 +147,22 @@ const sunFragmentShader = `
     uniform float time;
 
     void main() {
-        // Create a heat map color based on height/noise
-        float intensity = length(vPosition) - 1.8; // Base radius is 1.8
-        
-        vec3 colorDark = vec3(0.9, 0.2, 0.0); // Deep red magma
-        vec3 colorLight = vec3(1.0, 0.8, 0.2); // Bright yellow/white heat
-        
+        float intensity = length(vPosition) - 1.8; 
+        vec3 colorDark = vec3(0.9, 0.2, 0.0); 
+        vec3 colorLight = vec3(1.0, 0.8, 0.2); 
         vec3 finalColor = mix(colorDark, colorLight, intensity * 5.0);
-        
         gl_FragColor = vec4(finalColor, 1.0);
     }
 `;
 
 
 // ==========================================
-// 5. 3D Solar System Construction
+// 6. 3D Solar System Construction
 // ==========================================
 const solarSystem = new THREE.Group();
 scene.add(solarSystem);
 
-// Ambient Light
-const ambientLight = new THREE.AmbientLight(0x111122, 0.5); 
+const ambientLight = new THREE.AmbientLight(0x111122, 0.8); 
 scene.add(ambientLight);
 
 // The Sun PointLight (Casts Shadows)
@@ -214,9 +173,9 @@ sunLight.shadow.mapSize.height = 1024;
 sunLight.shadow.bias = -0.001;
 solarSystem.add(sunLight);
 
-// The Sun (Shader Material for Magma)
+// The Sun
 const sunUniforms = { time: { value: 0.0 } };
-const sunGeometry = new THREE.SphereGeometry(1.8, 128, 128); // Ultra high-res
+const sunGeometry = new THREE.SphereGeometry(1.8, 128, 128); 
 const sunMaterial = new THREE.ShaderMaterial({
     uniforms: sunUniforms,
     vertexShader: sunVertexShader,
@@ -226,81 +185,94 @@ const sunMaterial = new THREE.ShaderMaterial({
 const sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
 solarSystem.add(sunMesh);
 
-// Create Planets with Procedural Surface Detail
-const planets = [];
-function createPlanet(color, distance, size, speed, isGasGiant, roughness) {
-    const orbitGroup = new THREE.Group();
-    solarSystem.add(orbitGroup);
-
-    // Orbit Ring
+// Function to create orbit rings
+function createOrbit(distance) {
     const ringGeometry = new THREE.RingGeometry(distance - 0.01, distance + 0.01, 128);
     const ringMaterial = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.03
+        color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.03
     });
     const orbitRing = new THREE.Mesh(ringGeometry, ringMaterial);
     orbitRing.rotation.x = Math.PI / 2;
     orbitRing.receiveShadow = true;
-    orbitGroup.add(orbitRing);
-
-    // Generate procedural bumps
-    const textureSize = 512;
-    const noiseScale = isGasGiant ? 5 : 20;
-    const bumpMap = generateNoiseTexture(textureSize, noiseScale, Math.random() * 100, isGasGiant);
-
-    // Planet Sphere
-    const planetGeometry = new THREE.SphereGeometry(size, 64, 64);
-    const planetMaterial = new THREE.MeshStandardMaterial({
-        color: color,
-        roughness: roughness,
-        metalness: 0.1,
-        bumpMap: bumpMap,
-        bumpScale: 0.05
-    });
-    const planetMesh = new THREE.Mesh(planetGeometry, planetMaterial);
-    planetMesh.position.x = distance;
-    planetMesh.castShadow = true;
-    planetMesh.receiveShadow = true;
-    
-    // Tilt the planet randomly for realism
-    planetMesh.rotation.x = Math.random() * Math.PI;
-    
-    orbitGroup.add(planetMesh);
-
-    planets.push({ mesh: planetMesh, group: orbitGroup, speed: speed });
+    return orbitRing;
 }
 
-// Earth-like Rocky World
-createPlanet(0x1166aa, 4.0, 0.4, 0.015, false, 0.8);
-// Mars-like Cratered World
-createPlanet(0xc1440e, 6.5, 0.3, 0.009, false, 1.0);
-// Jupiter-like Gas Giant
-createPlanet(0xe3cca5, 10, 0.8, 0.005, true, 0.5);
+const planets = [];
 
-// Starfield Background
-const particlesGeometry = new THREE.BufferGeometry();
-const particlesCount = 3000; // More stars
-const posArray = new Float32Array(particlesCount * 3);
-for(let i = 0; i < particlesCount * 3; i++) {
-    posArray[i] = (Math.random() - 0.5) * 80; 
-}
-particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-const particlesMaterial = new THREE.PointsMaterial({
-    size: 0.05, // Slightly larger for distant stars
-    color: 0xddddff, // Star color
-    transparent: true,
-    opacity: 0.5,
-    blending: THREE.AdditiveBlending
+// A. Photorealistic Earth
+const earthGroup = new THREE.Group();
+solarSystem.add(earthGroup);
+earthGroup.add(createOrbit(5.0));
+
+// Earth Surface
+const earthGeometry = new THREE.SphereGeometry(0.5, 64, 64);
+const earthMaterial = new THREE.MeshStandardMaterial({
+    map: textures.earthColor,
+    bumpMap: textures.earthBump,
+    bumpScale: 0.02,
+    roughnessMap: textures.earthWater, // Water is shiny (low roughness where white)
+    roughness: 1, 
+    metalness: 0.1
 });
-const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
-scene.add(particlesMesh);
+const earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
+earthMesh.position.x = 5.0;
+earthMesh.castShadow = true;
+earthMesh.receiveShadow = true;
+earthMesh.rotation.x = 0.4; // Axial tilt
+earthGroup.add(earthMesh);
 
-solarSystem.rotation.x = 0.2; // Slight tilt
+// Earth Clouds (Multi-layer rendering)
+const cloudGeometry = new THREE.SphereGeometry(0.51, 64, 64); // Slightly larger
+const cloudMaterial = new THREE.MeshStandardMaterial({
+    map: textures.earthClouds,
+    transparent: true,
+    opacity: 0.8,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+});
+const cloudMesh = new THREE.Mesh(cloudGeometry, cloudMaterial);
+cloudMesh.position.x = 5.0;
+cloudMesh.rotation.x = 0.4;
+earthGroup.add(cloudMesh);
+
+planets.push({ mesh: earthMesh, group: earthGroup, speed: 0.012, hasClouds: true, cloudMesh: cloudMesh });
+
+// B. Procedural Rocky Planet (Mars-like)
+const marsGroup = new THREE.Group();
+solarSystem.add(marsGroup);
+marsGroup.add(createOrbit(3.0));
+
+const marsGeometry = new THREE.SphereGeometry(0.3, 64, 64);
+const marsMaterial = new THREE.MeshStandardMaterial({
+    color: 0xc1440e, roughness: 0.9, bumpScale: 0.05
+});
+const marsMesh = new THREE.Mesh(marsGeometry, marsMaterial);
+marsMesh.position.x = 3.0;
+marsMesh.castShadow = true;
+marsMesh.receiveShadow = true;
+marsGroup.add(marsMesh);
+planets.push({ mesh: marsMesh, group: marsGroup, speed: 0.018 });
+
+// C. Procedural Gas Giant
+const gasGroup = new THREE.Group();
+solarSystem.add(gasGroup);
+gasGroup.add(createOrbit(8.0));
+
+const gasGeometry = new THREE.SphereGeometry(0.9, 64, 64);
+const gasMaterial = new THREE.MeshStandardMaterial({
+    color: 0xe3cca5, roughness: 0.4
+});
+const gasMesh = new THREE.Mesh(gasGeometry, gasMaterial);
+gasMesh.position.x = 8.0;
+gasMesh.castShadow = true;
+gasMesh.receiveShadow = true;
+gasGroup.add(gasMesh);
+planets.push({ mesh: gasMesh, group: gasGroup, speed: 0.007 });
+
+solarSystem.rotation.x = 0.2; // Tilt entire system
 
 // ==========================================
-// 6. Animation Loop
+// 7. Animation Loop
 // ==========================================
 let mouseX = 0, mouseY = 0;
 const windowHalfX = window.innerWidth / 2;
@@ -315,18 +287,18 @@ const clock = new THREE.Clock();
 function animate() {
     const elapsedTime = clock.getElapsedTime();
 
-    // Update Sun Shader Time
     sunUniforms.time.value = elapsedTime;
 
-    // Idle rotation of planets
     planets.forEach(p => {
         p.group.rotation.y += p.speed; 
-        p.mesh.rotation.y += 0.01; // Day/night cycle spin
+        p.mesh.rotation.y += 0.01; 
+        
+        // Rotate clouds slightly faster/independently if they exist
+        if (p.hasClouds) {
+            p.cloudMesh.rotation.y += 0.012; 
+        }
     });
 
-    particlesMesh.rotation.y = elapsedTime * 0.005; // Slow galaxy spin
-
-    // Mouse Parallax effect
     camera.position.x += (mouseX * 0.002 - camera.position.x) * 0.05;
     camera.position.y += (-mouseY * 0.002 + 2 - camera.position.y) * 0.05; 
     camera.lookAt(scene.position);
@@ -337,7 +309,7 @@ function animate() {
 animate();
 
 // ==========================================
-// 7. GSAP ScrollTrigger Integration
+// 8. GSAP ScrollTrigger Integration
 // ==========================================
 gsap.registerPlugin(ScrollTrigger);
 lenis.on('scroll', ScrollTrigger.update);
@@ -357,16 +329,13 @@ tl.to(solarSystem.rotation, { y: Math.PI * 2, x: 0.6, ease: "none" }, 0);
 tl.to(camera.position, { z: 4, y: 0, ease: "power1.inOut" }, 0);
 
 gsap.to(solarSystem.position, {
-    x: -3,
-    scrollTrigger: { trigger: "#skills", start: "top center", end: "bottom center", scrub: 1 }
+    x: -3, scrollTrigger: { trigger: "#skills", start: "top center", end: "bottom center", scrub: 1 }
 });
 gsap.to(solarSystem.position, {
-    x: 2,
-    scrollTrigger: { trigger: "#experience", start: "top center", end: "bottom center", scrub: 1 }
+    x: 2, scrollTrigger: { trigger: "#experience", start: "top center", end: "bottom center", scrub: 1 }
 });
 gsap.to(solarSystem.position, {
-    x: -2,
-    scrollTrigger: { trigger: "#projects", start: "top center", end: "bottom center", scrub: 1 }
+    x: -2, scrollTrigger: { trigger: "#projects", start: "top center", end: "bottom center", scrub: 1 }
 });
 
 const contentBlocks = document.querySelectorAll('.content-block');
@@ -385,7 +354,7 @@ window.addEventListener('resize', () => {
     composer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// 10. Make anchor buttons work smoothly with Lenis
+// Anchor scroll
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function (e) {
         e.preventDefault();
