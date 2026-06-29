@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeshiko J | Software Engineer</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    
+    <!-- 3D WebGL Canvas Background -->
+    <canvas id="webgl-canvas"></canvas>
+
+    <!-- Scrollable Content -->
+    <main id="scroll-container">
+        
+        <!-- Hero Section -->
+        <section class="section hero" id="home">
+            <div class="content-block hero-content">
+                <p class="subtitle">Hello, I'm</p>
+                <h1 class="title">JESHIKO J</h1>
+                <h2 class="role">Software Engineer <span class="highlight">& Cloud Enthusiast</span></h2>
+                <p class="description">
+                    Designing and deploying scalable web applications end-to-end. Passionate about Cloud Infrastructure, DevOps, and creating high-performance engineering solutions.
+                </p>
+                <div class="cta-group">
+                    <a href="#experience" class="btn primary-btn">Explore My Journey</a>
+                    <a href="mailto:jeshikochandran@gmail.com" class="btn secondary-btn">Contact Me</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Skills Section -->
+        <section class="section skills" id="skills">
+            <div class="content-block align-right">
+                <h2 class="section-title">Technical Arsenal</h2>
+                <div class="skills-grid">
+                    <div class="skill-category">
+                        <h3>Cloud & DevOps</h3>
+                        <p>AWS (EC2, S3), Docker, Kubernetes, CI/CD Pipelines, Terraform, Ansible</p>
+                    </div>
+                    <div class="skill-category">
+                        <h3>Backend</h3>
+                        <p>Python, Django, REST APIs, MongoDB</p>
+                    </div>
+                    <div class="skill-category">
+                        <h3>Frontend</h3>
+                        <p>JavaScript, React, HTML5, CSS3, Tailwind CSS</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Experience Section -->
+        <section class="section experience" id="experience">
+            <div class="content-block">
+                <h2 class="section-title">Professional Experience</h2>
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-dot"></div>
+                        <h3 class="job-title">Software Development Intern</h3>
+                        <p class="company">Crescent Infotech | June 2024 - Aug 2024</p>
+                        <ul>
+                            <li>Developed intelligent software prototypes using ML and data processing, reducing manual handling by 30%.</li>
+                            <li>Completed end-to-end workflows across 2 project cycles, improving delivery speed and code quality.</li>
+                        </ul>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-dot"></div>
+                        <h3 class="job-title">Industrial Visit Participant</h3>
+                        <p class="company">Srishti Campus</p>
+                        <ul>
+                            <li>Observed agile project management workflows across 4+ enterprise teams.</li>
+                            <li>Gained insights into real-world DevOps and deployment practices.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Projects Section -->
+        <section class="section projects" id="projects">
+            <div class="content-block align-right">
+                <h2 class="section-title">Featured Work</h2>
+                <div class="project-card">
+                    <h3>E-Commerce Web Application</h3>
+                    <p class="tech-stack">Python, Django, JavaScript, MongoDB</p>
+                    <p class="project-desc">
+                        Designed a fully functional e-commerce platform with core modules like product listing, shopping cart, and authentication. Optimized front-end components for a 40% reduction in load time. Implemented a robust MVC architecture on the backend.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <section class="section footer" id="contact">
+            <div class="content-block center-text">
+                <h2 class="section-title">Let's Connect</h2>
+                <p>Looking for a motivated Software Engineer for your team?</p>
+                <div class="social-links">
+                    <a href="mailto:jeshikochandran@gmail.com" class="social-link">Email</a>
+                    <a href="https://linkedin.com/in/JeshikoJ" target="_blank" class="social-link">LinkedIn</a>
+                    <a href="tel:+917395881571" class="social-link">Phone</a>
+                </div>
+                <p class="copyright">© 2026 Jeshiko J. Built with Three.js & GSAP.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Libraries (CDN) -->
+    <!-- Three.js for 3D Graphics -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- GSAP for Animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    
+    <!-- Lenis for Smooth Scrolling -->
+    <script src="https://cdn.jsdelivr.net/gh/studio-freight/lenis@1.0.29/bundled/lenis.min.js"></script>
+
+    <!-- Custom Script -->
+    <script src="script.js"></script>
+</body>
+</html>
