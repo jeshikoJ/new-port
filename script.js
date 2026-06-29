@@ -1,6 +1,11 @@
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
 // 1. Initialize Lenis for smooth scrolling
 const lenis = new Lenis({
-    duration: 1.5, // slightly slower for smoother feel
+    duration: 1.5, 
     easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
     direction: 'vertical',
     gestureDirection: 'vertical',
@@ -20,13 +25,12 @@ requestAnimationFrame(raf);
 // 2. Initialize Three.js Scene
 const canvas = document.querySelector('#webgl-canvas');
 const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x030a08, 0.05);
 
-// Camera setup
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.z = 8;
 camera.position.y = 0;
 
-// Renderer setup
 const renderer = new THREE.WebGLRenderer({
     canvas: canvas,
     alpha: true,
@@ -35,60 +39,72 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-// 3. 3D Automation & Objects
+// 3. Post-Processing (Bloom for that neon glow effect)
+const renderScene = new RenderPass(scene, camera);
+const bloomPass = new UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    1.5, // strength
+    0.4, // radius
+    0.85 // threshold
+);
+// Adjust bloom for intense tech look
+bloomPass.threshold = 0;
+bloomPass.strength = 1.2;
+bloomPass.radius = 0.5;
+
+const composer = new EffectComposer(renderer);
+composer.addPass(renderScene);
+composer.addPass(bloomPass);
+
+// 4. 3D Automation & Objects (The "Core" Journey)
 const objectsGroup = new THREE.Group();
 scene.add(objectsGroup);
 
-// Object 1: Wireframe Torus Knot (Represents complex logic/DevOps pipelines)
-const torusGeometry = new THREE.TorusKnotGeometry(2, 0.5, 128, 16);
-const wireframeMaterial = new THREE.MeshBasicMaterial({ 
-    color: 0x64ffda, 
+// The Core Object (Icosahedron)
+const coreGeometry = new THREE.IcosahedronGeometry(1.5, 0);
+const coreMaterial = new THREE.MeshBasicMaterial({
+    color: 0x64ffda,
     wireframe: true,
     transparent: true,
-    opacity: 0.15
+    opacity: 0.8
 });
-const torusKnot = new THREE.Mesh(torusGeometry, wireframeMaterial);
-torusKnot.position.set(3, 0, -2);
-objectsGroup.add(torusKnot);
+const coreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
+objectsGroup.add(coreMesh);
 
-// Object 2: Icosahedron (Represents data/cloud nodes)
-const icoGeometry = new THREE.IcosahedronGeometry(1.5, 1);
-const solidMaterial = new THREE.MeshBasicMaterial({
-    color: 0x0f3325,
+// Outer Cage (Torus Knot)
+const cageGeometry = new THREE.TorusKnotGeometry(2.2, 0.1, 100, 16);
+const cageMaterial = new THREE.MeshBasicMaterial({ 
+    color: 0x0f3325, 
     wireframe: true,
     transparent: true,
     opacity: 0.3
 });
-const icosahedron = new THREE.Mesh(icoGeometry, solidMaterial);
-icosahedron.position.set(-4, -5, -4);
-objectsGroup.add(icosahedron);
+const cageMesh = new THREE.Mesh(cageGeometry, cageMaterial);
+objectsGroup.add(cageMesh);
 
-// Object 3: Floating Particle System (Data dust)
+// Particle Data Dust
 const particlesGeometry = new THREE.BufferGeometry();
-const particlesCount = 3000;
+const particlesCount = 2000;
 const posArray = new Float32Array(particlesCount * 3);
-
 for(let i = 0; i < particlesCount * 3; i++) {
-    posArray[i] = (Math.random() - 0.5) * 30; // Spread wide
+    posArray[i] = (Math.random() - 0.5) * 40; 
 }
-
 particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
 const particlesMaterial = new THREE.PointsMaterial({
-    size: 0.015,
+    size: 0.02,
     color: '#64ffda',
     transparent: true,
-    opacity: 0.6,
+    opacity: 0.4,
     blending: THREE.AdditiveBlending
 });
 const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
 scene.add(particlesMesh);
 
-// 4. Mouse Interactivity (Raycasting / Parallax)
+// 5. Mouse Interactivity (Parallax)
 let mouseX = 0;
 let mouseY = 0;
 let targetX = 0;
 let targetY = 0;
-
 const windowHalfX = window.innerWidth / 2;
 const windowHalfY = window.innerHeight / 2;
 
@@ -97,20 +113,19 @@ document.addEventListener('mousemove', (event) => {
     mouseY = (event.clientY - windowHalfY);
 });
 
-// 5. Animation Loop
+// 6. Animation Loop
 const clock = new THREE.Clock();
-
 function animate() {
     const elapsedTime = clock.getElapsedTime();
 
-    // Subtle idle animations for objects
-    torusKnot.rotation.x += 0.002;
-    torusKnot.rotation.y += 0.003;
+    // Idle core pulsating animations
+    coreMesh.rotation.x = elapsedTime * 0.2;
+    coreMesh.rotation.y = elapsedTime * 0.3;
     
-    icosahedron.rotation.x -= 0.002;
-    icosahedron.rotation.z += 0.002;
+    cageMesh.rotation.x = -elapsedTime * 0.1;
+    cageMesh.rotation.z = -elapsedTime * 0.15;
 
-    particlesMesh.rotation.y = elapsedTime * 0.02;
+    particlesMesh.rotation.y = elapsedTime * 0.03;
 
     // Mouse Parallax effect
     targetX = mouseX * 0.001;
@@ -119,30 +134,24 @@ function animate() {
     objectsGroup.rotation.y += 0.05 * (targetX - objectsGroup.rotation.y);
     objectsGroup.rotation.x += 0.05 * (targetY - objectsGroup.rotation.x);
     
-    // Slight camera sway based on mouse
-    camera.position.x += (mouseX * 0.001 - camera.position.x) * 0.05;
-    camera.position.y += (-mouseY * 0.001 - camera.position.y) * 0.05;
+    camera.position.x += (mouseX * 0.002 - camera.position.x) * 0.05;
+    camera.position.y += (-mouseY * 0.002 - camera.position.y) * 0.05;
     camera.lookAt(scene.position);
 
-    renderer.render(scene, camera);
+    // Use composer instead of renderer for Bloom
+    composer.render();
     requestAnimationFrame(animate);
 }
-
 animate();
 
-// 6. GSAP ScrollTrigger Integration
+// 7. GSAP ScrollTrigger - The Core's Journey
 gsap.registerPlugin(ScrollTrigger);
 lenis.on('scroll', ScrollTrigger.update);
 gsap.ticker.add((time) => { lenis.raf(time * 1000); });
 gsap.ticker.lagSmoothing(0, 0);
 
-// 7. Scroll Animations for 3D Objects (Automation)
-
-// Scene rotation and zoom on scroll
-gsap.to(objectsGroup.rotation, {
-    y: Math.PI * 2,
-    x: Math.PI / 2,
-    ease: "none",
+// Global Scene scroll journey
+const tl = gsap.timeline({
     scrollTrigger: {
         trigger: "#scroll-container",
         start: "top top",
@@ -151,25 +160,30 @@ gsap.to(objectsGroup.rotation, {
     }
 });
 
-gsap.to(camera.position, {
-    z: 3, // Zoom in as we scroll down
-    ease: "power1.inOut",
+// Animate the camera moving deeper into the scene over the whole scroll
+tl.to(camera.position, {
+    z: 2,
+    ease: "none"
+}, 0);
+
+// Rotate the entire group aggressively on scroll
+tl.to(objectsGroup.rotation, {
+    z: Math.PI * 4,
+    ease: "none"
+}, 0);
+
+// Morph the core when reaching Skills
+gsap.to(coreMesh.scale, {
+    x: 2, y: 2, z: 2,
     scrollTrigger: {
-        trigger: "#scroll-container",
-        start: "top top",
-        end: "bottom bottom",
-        scrub: 2
+        trigger: "#skills",
+        start: "top center",
+        end: "bottom center",
+        scrub: 1
     }
 });
-
-// Animate specific objects based on sections
-// When reaching skills, move Torus to the left
-gsap.to(torusKnot.position, {
-    x: -3,
-    y: 2,
-    z: 1,
-    scale: 1.5,
-    ease: "power2.out",
+gsap.to(coreMaterial.color, {
+    r: 0.1, g: 0.8, b: 0.9, // Shifts color slightly
     scrollTrigger: {
         trigger: "#skills",
         start: "top center",
@@ -178,13 +192,9 @@ gsap.to(torusKnot.position, {
     }
 });
 
-// When reaching experience, bring Icosahedron into view
-gsap.to(icosahedron.position, {
-    x: 3,
-    y: 0,
-    z: 2,
-    scale: 1.2,
-    ease: "power2.out",
+// Push the core left for Experience section
+gsap.to(objectsGroup.position, {
+    x: -3,
     scrollTrigger: {
         trigger: "#experience",
         start: "top center",
@@ -193,9 +203,39 @@ gsap.to(icosahedron.position, {
     }
 });
 
+// Pull core right and morph cage for Education section
+gsap.to(objectsGroup.position, {
+    x: 3,
+    scrollTrigger: {
+        trigger: "#education",
+        start: "top center",
+        end: "bottom center",
+        scrub: 1
+    }
+});
+gsap.to(cageMesh.scale, {
+    x: 1.5, y: 1.5, z: 1.5,
+    scrollTrigger: {
+        trigger: "#education",
+        start: "top center",
+        end: "bottom center",
+        scrub: 1
+    }
+});
+
+// Explode view for Projects
+gsap.to(coreMesh.scale, {
+    x: 3, y: 3, z: 3,
+    scrollTrigger: {
+        trigger: "#projects",
+        start: "top center",
+        end: "bottom center",
+        scrub: 1
+    }
+});
+
 // 8. Scroll Animations for HTML Content Blocks
 const contentBlocks = document.querySelectorAll('.content-block');
-
 contentBlocks.forEach((block) => {
     gsap.to(block, {
         y: 0,
@@ -216,4 +256,5 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    composer.setSize(window.innerWidth, window.innerHeight);
 });

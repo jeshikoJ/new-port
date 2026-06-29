@@ -60,7 +60,7 @@ a {
     width: 100%;
     display: flex;
     align-items: center;
-    padding: 0 10%;
+    padding: 10% 10%;
     position: relative;
     pointer-events: none; 
 }
@@ -68,12 +68,12 @@ a {
 /* Content Blocks (Glassmorphism) */
 .content-block {
     pointer-events: auto; /* Re-enable pointer events for actual content */
-    max-width: 650px;
+    max-width: 700px;
     background: var(--glass-bg);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--glass-border);
-    padding: 3rem;
+    padding: 3.5rem;
     border-radius: 20px;
     box-shadow: 0 20px 40px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.05);
     opacity: 0; 
@@ -184,7 +184,7 @@ a {
     color: var(--text-muted);
     font-size: 1.1rem;
     margin-bottom: 2.5rem;
-    max-width: 500px;
+    max-width: 600px;
 }
 
 /* Buttons */
@@ -275,6 +275,29 @@ a {
     font-size: 0.95rem;
 }
 
+/* Tags / Soft Skills */
+.tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin-top: 1rem;
+}
+
+.tag {
+    background: rgba(100, 255, 218, 0.1);
+    color: var(--accent);
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    border: 1px solid var(--glass-border);
+    transition: all 0.3s ease;
+}
+
+.tag:hover {
+    background: var(--accent);
+    color: var(--bg-color);
+}
+
 /* Experience Timeline */
 .timeline {
     position: relative;
@@ -330,19 +353,19 @@ a {
     margin-bottom: 1rem;
 }
 
-.timeline-item ul {
+.timeline-item ul, .achievement-list {
     list-style-type: none;
 }
 
-.timeline-item li {
+.timeline-item li, .achievement-list li {
     color: var(--text-muted);
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.8rem;
     position: relative;
     padding-left: 1.5rem;
-    font-size: 0.95rem;
+    font-size: 1rem;
 }
 
-.timeline-item li::before {
+.timeline-item li::before, .achievement-list li::before {
     content: "▹";
     position: absolute;
     left: 0;
@@ -424,8 +447,7 @@ a {
 
 @media (max-width: 768px) {
     .section {
-        padding: 0 5%;
-        margin: 4rem 0;
+        padding: 4rem 5%;
     }
     
     .content-block {
