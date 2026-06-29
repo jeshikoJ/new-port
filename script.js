@@ -11,7 +11,7 @@ const lenis = new Lenis({
     gestureDirection: 'vertical',
     smooth: true,
     mouseMultiplier: 1,
-    smoothTouch: false,
+    smoothTouch: false, // Let native scrolling handle touch for better mobile responsiveness
     touchMultiplier: 2,
     infinite: false,
 });
@@ -25,11 +25,12 @@ requestAnimationFrame(raf);
 // 2. Initialize Three.js Scene
 const canvas = document.querySelector('#webgl-canvas');
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x030a08, 0.05);
+scene.fog = new THREE.FogExp2(0x02050e, 0.03); // Deep space blue fog
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 8;
-camera.position.y = 0;
+camera.position.z = 10;
+camera.position.y = 2; // Look slightly down
+camera.lookAt(0, 0, 0);
 
 const renderer = new THREE.WebGLRenderer({
     canvas: canvas,
@@ -39,60 +40,85 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-// 3. Post-Processing (Bloom for that neon glow effect)
+// 3. Post-Processing (Intense Bloom for Vibrant Cyberpunk Solar System)
 const renderScene = new RenderPass(scene, camera);
 const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    1.5, // strength
-    0.4, // radius
-    0.85 // threshold
+    1.8,  // strength (intense glow)
+    0.6,  // radius
+    0.1   // threshold (low threshold makes everything glow easily)
 );
-// Adjust bloom for intense tech look
-bloomPass.threshold = 0;
-bloomPass.strength = 1.2;
-bloomPass.radius = 0.5;
 
 const composer = new EffectComposer(renderer);
 composer.addPass(renderScene);
 composer.addPass(bloomPass);
 
-// 4. 3D Automation & Objects (The "Core" Journey)
-const objectsGroup = new THREE.Group();
-scene.add(objectsGroup);
+// 4. 3D Solar System Setup
+const solarSystem = new THREE.Group();
+scene.add(solarSystem);
 
-// The Core Object (Icosahedron)
-const coreGeometry = new THREE.IcosahedronGeometry(1.5, 0);
-const coreMaterial = new THREE.MeshBasicMaterial({
-    color: 0x64ffda,
+// The Sun (Neon Orange)
+const sunGeometry = new THREE.IcosahedronGeometry(1.8, 2); // More detail for a smoother sphere
+const sunMaterial = new THREE.MeshBasicMaterial({
+    color: 0xff5500, // Vibrant Neon Orange
     wireframe: true,
     transparent: true,
-    opacity: 0.8
+    opacity: 0.9
 });
-const coreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
-objectsGroup.add(coreMesh);
+const sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
+solarSystem.add(sunMesh);
 
-// Outer Cage (Torus Knot)
-const cageGeometry = new THREE.TorusKnotGeometry(2.2, 0.1, 100, 16);
-const cageMaterial = new THREE.MeshBasicMaterial({ 
-    color: 0x0f3325, 
-    wireframe: true,
-    transparent: true,
-    opacity: 0.3
-});
-const cageMesh = new THREE.Mesh(cageGeometry, cageMaterial);
-objectsGroup.add(cageMesh);
+// Function to create planets and their orbits
+const planets = [];
+function createPlanet(color, distance, size, speed) {
+    const orbitGroup = new THREE.Group();
+    solarSystem.add(orbitGroup);
 
-// Particle Data Dust
+    // Orbit Ring
+    const ringGeometry = new THREE.RingGeometry(distance - 0.02, distance + 0.02, 64);
+    const ringMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.15
+    });
+    const orbitRing = new THREE.Mesh(ringGeometry, ringMaterial);
+    orbitRing.rotation.x = Math.PI / 2;
+    orbitGroup.add(orbitRing);
+
+    // Planet Sphere
+    const planetGeometry = new THREE.IcosahedronGeometry(size, 1);
+    const planetMaterial = new THREE.MeshBasicMaterial({
+        color: color,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.8
+    });
+    const planetMesh = new THREE.Mesh(planetGeometry, planetMaterial);
+    planetMesh.position.x = distance;
+    orbitGroup.add(planetMesh);
+
+    planets.push({ mesh: planetMesh, group: orbitGroup, speed: speed });
+}
+
+// Planet 1: Cyan
+createPlanet(0x00ffff, 3.5, 0.4, 0.02);
+// Planet 2: Magenta
+createPlanet(0xff00ff, 5.5, 0.6, 0.012);
+// Planet 3: Electric Blue
+createPlanet(0x0055ff, 8, 0.5, 0.008);
+
+// Space Dust (Stars)
 const particlesGeometry = new THREE.BufferGeometry();
-const particlesCount = 2000;
+const particlesCount = 1500;
 const posArray = new Float32Array(particlesCount * 3);
 for(let i = 0; i < particlesCount * 3; i++) {
-    posArray[i] = (Math.random() - 0.5) * 40; 
+    posArray[i] = (Math.random() - 0.5) * 50; 
 }
 particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
 const particlesMaterial = new THREE.PointsMaterial({
-    size: 0.02,
-    color: '#64ffda',
+    size: 0.03,
+    color: 0xffffff,
     transparent: true,
     opacity: 0.4,
     blending: THREE.AdditiveBlending
@@ -100,11 +126,12 @@ const particlesMaterial = new THREE.PointsMaterial({
 const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
 scene.add(particlesMesh);
 
+// Tilt the solar system for a better 3D perspective
+solarSystem.rotation.x = 0.3;
+
 // 5. Mouse Interactivity (Parallax)
 let mouseX = 0;
 let mouseY = 0;
-let targetX = 0;
-let targetY = 0;
 const windowHalfX = window.innerWidth / 2;
 const windowHalfY = window.innerHeight / 2;
 
@@ -113,125 +140,77 @@ document.addEventListener('mousemove', (event) => {
     mouseY = (event.clientY - windowHalfY);
 });
 
-// 6. Animation Loop
+// 6. Animation Loop (Idle Rotations)
 const clock = new THREE.Clock();
 function animate() {
     const elapsedTime = clock.getElapsedTime();
 
-    // Idle core pulsating animations
-    coreMesh.rotation.x = elapsedTime * 0.2;
-    coreMesh.rotation.y = elapsedTime * 0.3;
-    
-    cageMesh.rotation.x = -elapsedTime * 0.1;
-    cageMesh.rotation.z = -elapsedTime * 0.15;
+    // Idle rotation of the Sun
+    sunMesh.rotation.y = elapsedTime * 0.1;
+    sunMesh.rotation.z = elapsedTime * 0.05;
 
-    particlesMesh.rotation.y = elapsedTime * 0.03;
+    // Idle rotation of planets (independent of scroll)
+    planets.forEach(p => {
+        p.group.rotation.y += p.speed; // Orbit
+        p.mesh.rotation.y += 0.05;     // Spin
+        p.mesh.rotation.x += 0.02;
+    });
+
+    particlesMesh.rotation.y = elapsedTime * 0.01;
 
     // Mouse Parallax effect
-    targetX = mouseX * 0.001;
-    targetY = mouseY * 0.001;
-
-    objectsGroup.rotation.y += 0.05 * (targetX - objectsGroup.rotation.y);
-    objectsGroup.rotation.x += 0.05 * (targetY - objectsGroup.rotation.x);
-    
     camera.position.x += (mouseX * 0.002 - camera.position.x) * 0.05;
-    camera.position.y += (-mouseY * 0.002 - camera.position.y) * 0.05;
+    camera.position.y += (-mouseY * 0.002 + 2 - camera.position.y) * 0.05; // maintain base y=2
     camera.lookAt(scene.position);
 
-    // Use composer instead of renderer for Bloom
     composer.render();
     requestAnimationFrame(animate);
 }
 animate();
 
-// 7. GSAP ScrollTrigger - The Core's Journey
+// 7. GSAP ScrollTrigger - Solar System Majestic Journey
 gsap.registerPlugin(ScrollTrigger);
 lenis.on('scroll', ScrollTrigger.update);
 gsap.ticker.add((time) => { lenis.raf(time * 1000); });
 gsap.ticker.lagSmoothing(0, 0);
 
-// Global Scene scroll journey
 const tl = gsap.timeline({
     scrollTrigger: {
         trigger: "#scroll-container",
         start: "top top",
         end: "bottom bottom",
-        scrub: 1.5
+        scrub: 1.5 // Majestic and smooth
     }
 });
 
-// Animate the camera moving deeper into the scene over the whole scroll
+// As we scroll down, the entire solar system rotates dramatically
+tl.to(solarSystem.rotation, {
+    y: Math.PI * 2, // Full rotation
+    x: 0.8, // Tilt down slightly
+    ease: "none"
+}, 0);
+
+// Camera dives into the solar system
 tl.to(camera.position, {
-    z: 2,
-    ease: "none"
+    z: 3,
+    y: 0,
+    ease: "power1.inOut"
 }, 0);
 
-// Rotate the entire group aggressively on scroll
-tl.to(objectsGroup.rotation, {
-    z: Math.PI * 4,
-    ease: "none"
-}, 0);
-
-// Morph the core when reaching Skills
-gsap.to(coreMesh.scale, {
-    x: 2, y: 2, z: 2,
-    scrollTrigger: {
-        trigger: "#skills",
-        start: "top center",
-        end: "bottom center",
-        scrub: 1
-    }
-});
-gsap.to(coreMaterial.color, {
-    r: 0.1, g: 0.8, b: 0.9, // Shifts color slightly
-    scrollTrigger: {
-        trigger: "#skills",
-        start: "top center",
-        end: "bottom center",
-        scrub: 1
-    }
-});
-
-// Push the core left for Experience section
-gsap.to(objectsGroup.position, {
+// Specific section highlights (shift solar system to the side)
+gsap.to(solarSystem.position, {
     x: -3,
-    scrollTrigger: {
-        trigger: "#experience",
-        start: "top center",
-        end: "bottom center",
-        scrub: 1
-    }
+    scrollTrigger: { trigger: "#skills", start: "top center", end: "bottom center", scrub: 1 }
 });
 
-// Pull core right and morph cage for Education section
-gsap.to(objectsGroup.position, {
-    x: 3,
-    scrollTrigger: {
-        trigger: "#education",
-        start: "top center",
-        end: "bottom center",
-        scrub: 1
-    }
-});
-gsap.to(cageMesh.scale, {
-    x: 1.5, y: 1.5, z: 1.5,
-    scrollTrigger: {
-        trigger: "#education",
-        start: "top center",
-        end: "bottom center",
-        scrub: 1
-    }
+gsap.to(solarSystem.position, {
+    x: 2,
+    scrollTrigger: { trigger: "#experience", start: "top center", end: "bottom center", scrub: 1 }
 });
 
-// Explode view for Projects
-gsap.to(coreMesh.scale, {
-    x: 3, y: 3, z: 3,
-    scrollTrigger: {
-        trigger: "#projects",
-        start: "top center",
-        end: "bottom center",
-        scrub: 1
-    }
+gsap.to(solarSystem.position, {
+    x: -2,
+    scrollTrigger: { trigger: "#projects", start: "top center", end: "bottom center", scrub: 1 }
 });
 
 // 8. Scroll Animations for HTML Content Blocks
@@ -250,7 +229,7 @@ contentBlocks.forEach((block) => {
     });
 });
 
-// 9. Handle Window Resize
+// 9. Handle Window Resize (Responsive)
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
