@@ -40,59 +40,65 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-// 3. Post-Processing (Intense Bloom for Vibrant Cyberpunk Solar System)
+// 3. Post-Processing (Subtle Bloom for realistic glow)
 const renderScene = new RenderPass(scene, camera);
 const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    1.8,  // strength (intense glow)
-    0.6,  // radius
-    0.1   // threshold (low threshold makes everything glow easily)
+    0.8,  // strength (more realistic sun glow)
+    0.3,  // radius
+    0.2   // threshold
 );
 
 const composer = new EffectComposer(renderer);
 composer.addPass(renderScene);
 composer.addPass(bloomPass);
 
-// 4. 3D Solar System Setup
+// 4. 3D Realistic Solar System Setup
 const solarSystem = new THREE.Group();
 scene.add(solarSystem);
 
-// The Sun (Neon Orange)
-const sunGeometry = new THREE.IcosahedronGeometry(1.8, 2); // More detail for a smoother sphere
-const sunMaterial = new THREE.MeshBasicMaterial({
-    color: 0xff5500, // Vibrant Neon Orange
-    wireframe: true,
-    transparent: true,
-    opacity: 0.9
+// Lighting
+const ambientLight = new THREE.AmbientLight(0x222222); // Dim ambient light for space
+scene.add(ambientLight);
+
+const sunLight = new THREE.PointLight(0xffeedd, 30, 200); // Strong point light from the sun
+solarSystem.add(sunLight);
+
+// The Sun (Realistic Yellow/Orange Glow)
+const sunGeometry = new THREE.IcosahedronGeometry(1.8, 4); // High detail
+const sunMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffaa00,
+    emissive: 0xff7700,
+    emissiveIntensity: 1.5,
+    roughness: 0.2
 });
 const sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
 solarSystem.add(sunMesh);
 
-// Function to create planets and their orbits
+// Function to create realistic planets and their orbits
 const planets = [];
-function createPlanet(color, distance, size, speed) {
+function createPlanet(color, distance, size, speed, roughness = 0.7, metalness = 0.1) {
     const orbitGroup = new THREE.Group();
     solarSystem.add(orbitGroup);
 
     // Orbit Ring
-    const ringGeometry = new THREE.RingGeometry(distance - 0.02, distance + 0.02, 64);
+    const ringGeometry = new THREE.RingGeometry(distance - 0.01, distance + 0.01, 64);
     const ringMaterial = new THREE.MeshBasicMaterial({
         color: 0xffffff,
         side: THREE.DoubleSide,
         transparent: true,
-        opacity: 0.15
+        opacity: 0.05 // Very faint orbit line
     });
     const orbitRing = new THREE.Mesh(ringGeometry, ringMaterial);
     orbitRing.rotation.x = Math.PI / 2;
     orbitGroup.add(orbitRing);
 
-    // Planet Sphere
-    const planetGeometry = new THREE.IcosahedronGeometry(size, 1);
-    const planetMaterial = new THREE.MeshBasicMaterial({
+    // Planet Sphere (Solid Realistic Material)
+    const planetGeometry = new THREE.IcosahedronGeometry(size, 3);
+    const planetMaterial = new THREE.MeshStandardMaterial({
         color: color,
-        wireframe: true,
-        transparent: true,
-        opacity: 0.8
+        roughness: roughness,
+        metalness: metalness
     });
     const planetMesh = new THREE.Mesh(planetGeometry, planetMaterial);
     planetMesh.position.x = distance;
@@ -101,12 +107,12 @@ function createPlanet(color, distance, size, speed) {
     planets.push({ mesh: planetMesh, group: orbitGroup, speed: speed });
 }
 
-// Planet 1: Cyan
-createPlanet(0x00ffff, 3.5, 0.4, 0.02);
-// Planet 2: Magenta
-createPlanet(0xff00ff, 5.5, 0.6, 0.012);
-// Planet 3: Electric Blue
-createPlanet(0x0055ff, 8, 0.5, 0.008);
+// Planet 1: Earth-like (Blue/Green)
+createPlanet(0x2b82c9, 3.5, 0.4, 0.02, 0.6, 0.1);
+// Planet 2: Mars-like (Red/Orange)
+createPlanet(0xc1440e, 5.5, 0.3, 0.012, 0.9, 0.0);
+// Planet 3: Jupiter-like (Gas Giant)
+createPlanet(0xe3dccb, 8, 0.7, 0.008, 0.4, 0.0);
 
 // Space Dust (Stars)
 const particlesGeometry = new THREE.BufferGeometry();
