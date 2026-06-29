@@ -1,6 +1,6 @@
 // 1. Initialize Lenis for smooth scrolling
 const lenis = new Lenis({
-    duration: 1.2,
+    duration: 1.5, // slightly slower for smoother feel
     easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
     direction: 'vertical',
     gestureDirection: 'vertical',
@@ -23,7 +23,8 @@ const scene = new THREE.Scene();
 
 // Camera setup
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 5;
+camera.position.z = 8;
+camera.position.y = 0;
 
 // Renderer setup
 const renderer = new THREE.WebGLRenderer({
@@ -34,41 +35,94 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-// 3. Create a 3D Particle System (Motif: Cloud Data Nodes)
-const particlesGeometry = new THREE.BufferGeometry();
-const particlesCount = 2000;
+// 3. 3D Automation & Objects
+const objectsGroup = new THREE.Group();
+scene.add(objectsGroup);
 
+// Object 1: Wireframe Torus Knot (Represents complex logic/DevOps pipelines)
+const torusGeometry = new THREE.TorusKnotGeometry(2, 0.5, 128, 16);
+const wireframeMaterial = new THREE.MeshBasicMaterial({ 
+    color: 0x64ffda, 
+    wireframe: true,
+    transparent: true,
+    opacity: 0.15
+});
+const torusKnot = new THREE.Mesh(torusGeometry, wireframeMaterial);
+torusKnot.position.set(3, 0, -2);
+objectsGroup.add(torusKnot);
+
+// Object 2: Icosahedron (Represents data/cloud nodes)
+const icoGeometry = new THREE.IcosahedronGeometry(1.5, 1);
+const solidMaterial = new THREE.MeshBasicMaterial({
+    color: 0x0f3325,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.3
+});
+const icosahedron = new THREE.Mesh(icoGeometry, solidMaterial);
+icosahedron.position.set(-4, -5, -4);
+objectsGroup.add(icosahedron);
+
+// Object 3: Floating Particle System (Data dust)
+const particlesGeometry = new THREE.BufferGeometry();
+const particlesCount = 3000;
 const posArray = new Float32Array(particlesCount * 3);
 
 for(let i = 0; i < particlesCount * 3; i++) {
-    // Creating a spread out particle field
-    posArray[i] = (Math.random() - 0.5) * 15;
+    posArray[i] = (Math.random() - 0.5) * 30; // Spread wide
 }
 
 particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-
-// Material
 const particlesMaterial = new THREE.PointsMaterial({
-    size: 0.02,
-    color: '#64ffda', // Neon green/cyan accent
+    size: 0.015,
+    color: '#64ffda',
     transparent: true,
-    opacity: 0.8,
+    opacity: 0.6,
     blending: THREE.AdditiveBlending
 });
-
-// Mesh
 const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
 scene.add(particlesMesh);
 
-// 4. Animation Loop
+// 4. Mouse Interactivity (Raycasting / Parallax)
+let mouseX = 0;
+let mouseY = 0;
+let targetX = 0;
+let targetY = 0;
+
+const windowHalfX = window.innerWidth / 2;
+const windowHalfY = window.innerHeight / 2;
+
+document.addEventListener('mousemove', (event) => {
+    mouseX = (event.clientX - windowHalfX);
+    mouseY = (event.clientY - windowHalfY);
+});
+
+// 5. Animation Loop
 const clock = new THREE.Clock();
 
 function animate() {
     const elapsedTime = clock.getElapsedTime();
 
-    // Subtle continuous rotation
-    particlesMesh.rotation.y = elapsedTime * 0.05;
-    particlesMesh.rotation.x = elapsedTime * 0.02;
+    // Subtle idle animations for objects
+    torusKnot.rotation.x += 0.002;
+    torusKnot.rotation.y += 0.003;
+    
+    icosahedron.rotation.x -= 0.002;
+    icosahedron.rotation.z += 0.002;
+
+    particlesMesh.rotation.y = elapsedTime * 0.02;
+
+    // Mouse Parallax effect
+    targetX = mouseX * 0.001;
+    targetY = mouseY * 0.001;
+
+    objectsGroup.rotation.y += 0.05 * (targetX - objectsGroup.rotation.y);
+    objectsGroup.rotation.x += 0.05 * (targetY - objectsGroup.rotation.x);
+    
+    // Slight camera sway based on mouse
+    camera.position.x += (mouseX * 0.001 - camera.position.x) * 0.05;
+    camera.position.y += (-mouseY * 0.001 - camera.position.y) * 0.05;
+    camera.lookAt(scene.position);
 
     renderer.render(scene, camera);
     requestAnimationFrame(animate);
@@ -76,66 +130,90 @@ function animate() {
 
 animate();
 
-// 5. GSAP ScrollTrigger Integration
+// 6. GSAP ScrollTrigger Integration
 gsap.registerPlugin(ScrollTrigger);
-
-// Connect Lenis to GSAP ScrollTrigger
 lenis.on('scroll', ScrollTrigger.update);
-
-gsap.ticker.add((time) => {
-  lenis.raf(time * 1000);
-});
+gsap.ticker.add((time) => { lenis.raf(time * 1000); });
 gsap.ticker.lagSmoothing(0, 0);
 
-// 6. Scroll Animations for 3D Object
-// When scrolling, rotate the particle system dramatically and change camera position
-gsap.to(particlesMesh.rotation, {
+// 7. Scroll Animations for 3D Objects (Automation)
+
+// Scene rotation and zoom on scroll
+gsap.to(objectsGroup.rotation, {
     y: Math.PI * 2,
-    x: Math.PI,
+    x: Math.PI / 2,
     ease: "none",
     scrollTrigger: {
         trigger: "#scroll-container",
         start: "top top",
         end: "bottom bottom",
-        scrub: 1
+        scrub: 1.5
     }
 });
 
 gsap.to(camera.position, {
-    z: 2, // Move camera closer as you scroll down
-    ease: "none",
+    z: 3, // Zoom in as we scroll down
+    ease: "power1.inOut",
     scrollTrigger: {
         trigger: "#scroll-container",
         start: "top top",
         end: "bottom bottom",
+        scrub: 2
+    }
+});
+
+// Animate specific objects based on sections
+// When reaching skills, move Torus to the left
+gsap.to(torusKnot.position, {
+    x: -3,
+    y: 2,
+    z: 1,
+    scale: 1.5,
+    ease: "power2.out",
+    scrollTrigger: {
+        trigger: "#skills",
+        start: "top center",
+        end: "bottom center",
         scrub: 1
     }
 });
 
-// 7. Scroll Animations for HTML Content Blocks
+// When reaching experience, bring Icosahedron into view
+gsap.to(icosahedron.position, {
+    x: 3,
+    y: 0,
+    z: 2,
+    scale: 1.2,
+    ease: "power2.out",
+    scrollTrigger: {
+        trigger: "#experience",
+        start: "top center",
+        end: "bottom center",
+        scrub: 1
+    }
+});
+
+// 8. Scroll Animations for HTML Content Blocks
 const contentBlocks = document.querySelectorAll('.content-block');
 
 contentBlocks.forEach((block) => {
     gsap.to(block, {
         y: 0,
         opacity: 1,
-        duration: 1,
+        duration: 1.2,
         ease: "power3.out",
         scrollTrigger: {
             trigger: block,
-            start: "top 80%", // Reveal when top of block hits 80% of viewport
+            start: "top 85%", 
             toggleActions: "play none none reverse"
         }
     });
 });
 
-// 8. Handle Window Resize
+// 9. Handle Window Resize
 window.addEventListener('resize', () => {
-    // Update camera
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
-
-    // Update renderer
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 });
