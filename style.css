@@ -15,9 +15,9 @@
     --accent-secondary: #ff00ff; /* Magenta */
     --accent-glow: rgba(0, 255, 255, 0.4);
     
-    /* Glassmorphism */
-    --glass-bg: rgba(5, 10, 20, 0.7);
-    --glass-border: rgba(0, 255, 255, 0.2);
+    /* Glassmorphism matching the background */
+    --glass-bg: rgba(2, 5, 14, 0.4);
+    --glass-border: rgba(0, 255, 255, 0.15);
 }
 
 body {
@@ -75,8 +75,8 @@ a {
     width: 100%;
     max-width: 700px;
     background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border: 1px solid var(--glass-border);
     padding: clamp(2rem, 5vw, 4rem); /* Responsive padding */
     border-radius: 24px;
