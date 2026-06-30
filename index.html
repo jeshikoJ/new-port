@@ -12,11 +12,20 @@
     
     <link rel="stylesheet" href="style.css">
     
-    <!-- Clean HTML without 3D imports -->
+    <!-- ES Module Map for Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
 </head>
 <body>
     
-    <!-- Scrollable Content -->
+    <!-- 3D WebGL Canvas Background -->
+    <canvas id="webgl-canvas"></canvas>
 
     <!-- Scrollable Content -->
     <main id="scroll-container">
