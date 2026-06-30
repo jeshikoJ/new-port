@@ -1,7 +1,5 @@
 import * as THREE from 'three';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+// Imports cleaned up, removed EffectComposer to guarantee rendering on all devices
 
 // ==========================================
 // 1. Initialize Lenis for smooth scrolling
@@ -46,19 +44,8 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
 // ==========================================
-// 3. Post-Processing (Cinematic Bloom for Black Hole Glow)
-// ==========================================
-const renderScene = new RenderPass(scene, camera);
-const bloomPass = new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight),
-    1.5,  // strength (intense glow)
-    0.6,  // radius (wide spread)
-    0.3   // threshold (only bright things glow)
-);
-
-const composer = new EffectComposer(renderer);
-composer.addPass(renderScene);
-composer.addPass(bloomPass);
+// Removed Post-Processing (Bloom) to ensure 100% compatibility and prevent black screen issues
+// The glowing effect will be handled entirely by AdditiveBlending materials in the scene.
 
 // ==========================================
 // 4. Build the Cinematic Black Hole
@@ -206,7 +193,7 @@ function animate() {
     camera.position.y += (-mouseY * 0.002 + 2 - camera.position.y) * 0.05; 
     camera.lookAt(0, 0, -5); // Always look at the black hole
 
-    composer.render();
+    renderer.render(scene, camera);
     requestAnimationFrame(animate);
 }
 animate();
@@ -253,7 +240,6 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    composer.setSize(window.innerWidth, window.innerHeight);
 });
 
 // Smooth Anchor Linking
