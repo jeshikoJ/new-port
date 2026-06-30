@@ -27,8 +27,8 @@ const canvas = document.querySelector('#webgl-canvas');
 const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 10;
-camera.position.y = 2; 
+camera.position.z = 12; // Pull back slightly to fit more planets
+camera.position.y = 3; 
 camera.lookAt(0, 0, 0);
 
 const renderer = new THREE.WebGLRenderer({
@@ -57,17 +57,24 @@ composer.addPass(renderScene);
 composer.addPass(bloomPass);
 
 // ==========================================
-// 4. TEXTURE LOADING (Photorealism)
+// 4. TEXTURE LOADING (All 8 Real Planets)
 // ==========================================
 const textureLoader = new THREE.TextureLoader();
+textureLoader.setCrossOrigin('anonymous'); // Required for CDN fetching
 
-// Reliable CDN URLs for photorealistic maps
 const textures = {
-    earthColor: textureLoader.load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg'),
-    earthBump: textureLoader.load('https://unpkg.com/three-globe/example/img/earth-topology.png'),
-    earthWater: textureLoader.load('https://unpkg.com/three-globe/example/img/earth-water.png'),
-    earthClouds: textureLoader.load('https://unpkg.com/three-globe/example/img/earth-clouds.png'),
-    nightSky: textureLoader.load('https://unpkg.com/three-globe/example/img/night-sky.png')
+    nightSky: textureLoader.load('https://unpkg.com/three-globe/example/img/night-sky.png'),
+    // Solar System Scope CDN textures for 8 planets
+    mercury: textureLoader.load('https://solartextures.b-cdn.net/2k_mercury.jpg'),
+    venus: textureLoader.load('https://solartextures.b-cdn.net/2k_venus_surface.jpg'),
+    earth: textureLoader.load('https://solartextures.b-cdn.net/2k_earth_daymap.jpg'),
+    mars: textureLoader.load('https://solartextures.b-cdn.net/2k_mars.jpg'),
+    jupiter: textureLoader.load('https://solartextures.b-cdn.net/2k_jupiter.jpg'),
+    saturn: textureLoader.load('https://solartextures.b-cdn.net/2k_saturn.jpg'),
+    uranus: textureLoader.load('https://solartextures.b-cdn.net/2k_uranus.jpg'),
+    neptune: textureLoader.load('https://solartextures.b-cdn.net/2k_neptune.jpg'),
+    // Extra Earth detail
+    earthClouds: textureLoader.load('https://unpkg.com/three-globe/example/img/earth-clouds.png')
 };
 
 // Set photorealistic background
@@ -157,19 +164,19 @@ const sunFragmentShader = `
 
 
 // ==========================================
-// 6. 3D Solar System Construction
+// 6. 3D Solar System Construction (All 8 Planets)
 // ==========================================
 const solarSystem = new THREE.Group();
 scene.add(solarSystem);
 
-const ambientLight = new THREE.AmbientLight(0x111122, 0.8); 
+const ambientLight = new THREE.AmbientLight(0x222233, 0.5); 
 scene.add(ambientLight);
 
 // The Sun PointLight (Casts Shadows)
-const sunLight = new THREE.PointLight(0xffeedd, 50, 300);
+const sunLight = new THREE.PointLight(0xffeedd, 100, 500);
 sunLight.castShadow = true;
-sunLight.shadow.mapSize.width = 1024;
-sunLight.shadow.mapSize.height = 1024;
+sunLight.shadow.mapSize.width = 2048; // High res shadows
+sunLight.shadow.mapSize.height = 2048;
 sunLight.shadow.bias = -0.001;
 solarSystem.add(sunLight);
 
@@ -185,11 +192,11 @@ const sunMaterial = new THREE.ShaderMaterial({
 const sunMesh = new THREE.Mesh(sunGeometry, sunMaterial);
 solarSystem.add(sunMesh);
 
-// Function to create orbit rings
+// Helper function to create orbit rings
 function createOrbit(distance) {
-    const ringGeometry = new THREE.RingGeometry(distance - 0.01, distance + 0.01, 128);
+    const ringGeometry = new THREE.RingGeometry(distance - 0.015, distance + 0.015, 128);
     const ringMaterial = new THREE.MeshBasicMaterial({
-        color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.03
+        color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.05
     });
     const orbitRing = new THREE.Mesh(ringGeometry, ringMaterial);
     orbitRing.rotation.x = Math.PI / 2;
@@ -199,77 +206,86 @@ function createOrbit(distance) {
 
 const planets = [];
 
-// A. Photorealistic Earth
+// Helper function to create standard planets
+function buildPlanet(texture, distance, size, speed, hasRings = false) {
+    const group = new THREE.Group();
+    solarSystem.add(group);
+    group.add(createOrbit(distance));
+
+    const geometry = new THREE.SphereGeometry(size, 64, 64);
+    const material = new THREE.MeshStandardMaterial({
+        map: texture,
+        roughness: 0.8, // Default rough surface
+        metalness: 0.1
+    });
+    
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.x = distance;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.rotation.x = Math.random() * Math.PI; // Random tilt
+    group.add(mesh);
+
+    // Specific logic for Saturn's rings
+    if (hasRings) {
+        const saturnRingGeo = new THREE.RingGeometry(size * 1.5, size * 2.2, 64);
+        const saturnRingMat = new THREE.MeshStandardMaterial({
+            color: 0xcca677, side: THREE.DoubleSide, transparent: true, opacity: 0.8, roughness: 0.6
+        });
+        const saturnRing = new THREE.Mesh(saturnRingGeo, saturnRingMat);
+        saturnRing.rotation.x = Math.PI / 2 + 0.2; // Tilt ring
+        saturnRing.position.x = distance;
+        saturnRing.castShadow = true;
+        saturnRing.receiveShadow = true;
+        group.add(saturnRing);
+    }
+
+    planets.push({ mesh: mesh, group: group, speed: speed });
+    return { mesh, group };
+}
+
+// 1. Mercury
+buildPlanet(textures.mercury, 2.5, 0.15, 0.025);
+// 2. Venus
+buildPlanet(textures.venus, 3.5, 0.35, 0.02);
+
+// 3. Earth (Special case: Needs Cloud layer)
 const earthGroup = new THREE.Group();
 solarSystem.add(earthGroup);
 earthGroup.add(createOrbit(5.0));
-
-// Earth Surface
-const earthGeometry = new THREE.SphereGeometry(0.5, 64, 64);
+const earthGeometry = new THREE.SphereGeometry(0.4, 64, 64);
 const earthMaterial = new THREE.MeshStandardMaterial({
-    map: textures.earthColor,
-    bumpMap: textures.earthBump,
-    bumpScale: 0.02,
-    roughnessMap: textures.earthWater, // Water is shiny (low roughness where white)
-    roughness: 1, 
-    metalness: 0.1
+    map: textures.earth, roughness: 0.6, metalness: 0.1
 });
 const earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
 earthMesh.position.x = 5.0;
 earthMesh.castShadow = true;
 earthMesh.receiveShadow = true;
-earthMesh.rotation.x = 0.4; // Axial tilt
+earthMesh.rotation.x = 0.4;
 earthGroup.add(earthMesh);
 
-// Earth Clouds (Multi-layer rendering)
-const cloudGeometry = new THREE.SphereGeometry(0.51, 64, 64); // Slightly larger
+const cloudGeometry = new THREE.SphereGeometry(0.41, 64, 64);
 const cloudMaterial = new THREE.MeshStandardMaterial({
-    map: textures.earthClouds,
-    transparent: true,
-    opacity: 0.8,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false
+    map: textures.earthClouds, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false
 });
 const cloudMesh = new THREE.Mesh(cloudGeometry, cloudMaterial);
 cloudMesh.position.x = 5.0;
 cloudMesh.rotation.x = 0.4;
 earthGroup.add(cloudMesh);
+planets.push({ mesh: earthMesh, group: earthGroup, speed: 0.015, hasClouds: true, cloudMesh: cloudMesh });
 
-planets.push({ mesh: earthMesh, group: earthGroup, speed: 0.012, hasClouds: true, cloudMesh: cloudMesh });
+// 4. Mars
+buildPlanet(textures.mars, 6.5, 0.25, 0.012);
+// 5. Jupiter
+buildPlanet(textures.jupiter, 9.0, 1.0, 0.008);
+// 6. Saturn
+buildPlanet(textures.saturn, 12.5, 0.8, 0.005, true);
+// 7. Uranus
+buildPlanet(textures.uranus, 16.0, 0.6, 0.003);
+// 8. Neptune
+buildPlanet(textures.neptune, 19.0, 0.55, 0.002);
 
-// B. Procedural Rocky Planet (Mars-like)
-const marsGroup = new THREE.Group();
-solarSystem.add(marsGroup);
-marsGroup.add(createOrbit(3.0));
-
-const marsGeometry = new THREE.SphereGeometry(0.3, 64, 64);
-const marsMaterial = new THREE.MeshStandardMaterial({
-    color: 0xc1440e, roughness: 0.9, bumpScale: 0.05
-});
-const marsMesh = new THREE.Mesh(marsGeometry, marsMaterial);
-marsMesh.position.x = 3.0;
-marsMesh.castShadow = true;
-marsMesh.receiveShadow = true;
-marsGroup.add(marsMesh);
-planets.push({ mesh: marsMesh, group: marsGroup, speed: 0.018 });
-
-// C. Procedural Gas Giant
-const gasGroup = new THREE.Group();
-solarSystem.add(gasGroup);
-gasGroup.add(createOrbit(8.0));
-
-const gasGeometry = new THREE.SphereGeometry(0.9, 64, 64);
-const gasMaterial = new THREE.MeshStandardMaterial({
-    color: 0xe3cca5, roughness: 0.4
-});
-const gasMesh = new THREE.Mesh(gasGeometry, gasMaterial);
-gasMesh.position.x = 8.0;
-gasMesh.castShadow = true;
-gasMesh.receiveShadow = true;
-gasGroup.add(gasMesh);
-planets.push({ mesh: gasMesh, group: gasGroup, speed: 0.007 });
-
-solarSystem.rotation.x = 0.2; // Tilt entire system
+solarSystem.rotation.x = 0.2; // Tilt entire system slightly
 
 // ==========================================
 // 7. Animation Loop
@@ -289,18 +305,16 @@ function animate() {
 
     sunUniforms.time.value = elapsedTime;
 
+    // Idle rotation of planets (independent of scroll)
     planets.forEach(p => {
         p.group.rotation.y += p.speed; 
         p.mesh.rotation.y += 0.01; 
-        
-        // Rotate clouds slightly faster/independently if they exist
-        if (p.hasClouds) {
-            p.cloudMesh.rotation.y += 0.012; 
-        }
+        if (p.hasClouds) { p.cloudMesh.rotation.y += 0.012; }
     });
 
+    // Mouse Parallax effect
     camera.position.x += (mouseX * 0.002 - camera.position.x) * 0.05;
-    camera.position.y += (-mouseY * 0.002 + 2 - camera.position.y) * 0.05; 
+    camera.position.y += (-mouseY * 0.002 + 3 - camera.position.y) * 0.05; 
     camera.lookAt(scene.position);
 
     composer.render();
@@ -309,7 +323,7 @@ function animate() {
 animate();
 
 // ==========================================
-// 8. GSAP ScrollTrigger Integration
+// 8. GSAP ScrollTrigger Integration (Smooth Rotation)
 // ==========================================
 gsap.registerPlugin(ScrollTrigger);
 lenis.on('scroll', ScrollTrigger.update);
@@ -321,13 +335,25 @@ const tl = gsap.timeline({
         trigger: "#scroll-container",
         start: "top top",
         end: "bottom bottom",
-        scrub: 1.5 
+        scrub: 1.5 // Smooth scrubbing
     }
 });
 
-tl.to(solarSystem.rotation, { y: Math.PI * 2, x: 0.6, ease: "none" }, 0);
-tl.to(camera.position, { z: 4, y: 0, ease: "power1.inOut" }, 0);
+// The core request: smooth rotation of the entire solar system while scrolling
+tl.to(solarSystem.rotation, { 
+    y: Math.PI * 4, // 2 full majestic rotations over the entire scroll
+    x: 0.6, 
+    ease: "power1.inOut" 
+}, 0);
 
+// Dive the camera in slightly as we scroll down
+tl.to(camera.position, { 
+    z: 6, 
+    y: 1, 
+    ease: "power2.inOut" 
+}, 0);
+
+// Shift the solar system to frame content
 gsap.to(solarSystem.position, {
     x: -3, scrollTrigger: { trigger: "#skills", start: "top center", end: "bottom center", scrub: 1 }
 });

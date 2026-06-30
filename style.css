@@ -181,9 +181,7 @@ a {
     font-size: clamp(3.5rem, 10vw, 7rem); /* Huge fluid text */
     line-height: 1;
     margin-bottom: 1rem;
-    background: linear-gradient(to right, #fff, var(--accent-secondary));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #ffffff; /* Make intro front color white as requested */
 }
 
 .role {
