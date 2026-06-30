@@ -59,17 +59,14 @@ composer.addPass(bloomPass);
 // 4. GUARANTEED REALISM (Procedural Generation & Textures)
 // ==========================================
 
-// A procedural noise generator to guarantee rocky realism and COLOR
-function generateProceduralMap(size, scale, colorHex1, colorHex2, isGasGiant = false, isBump = false) {
+// A procedural noise generator to guarantee rocky realism
+function generateBumpMap(size, scale, isGasGiant = false) {
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext('2d');
     const imageData = ctx.createImageData(size, size);
     const data = imageData.data;
-
-    const c1 = new THREE.Color(colorHex1);
-    const c2 = new THREE.Color(colorHex2);
 
     const hash = (x, y) => {
         let h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453123;
@@ -94,20 +91,10 @@ function generateProceduralMap(size, scale, colorHex1, colorHex2, isGasGiant = f
             }
             
             let n = Math.max(0, Math.min(1, val));
-
-            if (isBump) {
-                const bVal = Math.floor(n * 255);
-                const index = (x + y * size) * 4;
-                data[index] = bVal; data[index + 1] = bVal; data[index + 2] = bVal; data[index + 3] = 255;
-            } else {
-                // Interpolate colors for the diffuse map
-                const r = (c1.r + (c2.r - c1.r) * n) * 255;
-                const g = (c1.g + (c2.g - c1.g) * n) * 255;
-                const b = (c1.b + (c2.b - c1.b) * n) * 255;
-
-                const index = (x + y * size) * 4;
-                data[index] = r; data[index + 1] = g; data[index + 2] = b; data[index + 3] = 255;
-            }
+            const bVal = Math.floor(n * 255);
+            
+            const index = (x + y * size) * 4;
+            data[index] = bVal; data[index + 1] = bVal; data[index + 2] = bVal; data[index + 3] = 255;
         }
     }
     ctx.putImageData(imageData, 0, 0);
@@ -117,20 +104,11 @@ function generateProceduralMap(size, scale, colorHex1, colorHex2, isGasGiant = f
     return texture;
 }
 
-const proceduralRockBump = generateProceduralMap(512, 10, 0, 0, false, true);
-const proceduralGasBump = generateProceduralMap(512, 5, 0, 0, true, true);
+const proceduralRockBump = generateBumpMap(512, 10, false);
+const proceduralGasBump = generateBumpMap(512, 5, true);
 
 // Generate bulletproof colored procedural textures for every planet!
-const planetMaps = {
-    mercury: generateProceduralMap(512, 10, 0xaaaaaa, 0x555555, false),
-    venus: generateProceduralMap(512, 12, 0xe3bb76, 0xc49645, false),
-    earth: generateProceduralMap(512, 8, 0x2b82c9, 0x42b314, false), // Blue oceans, green land
-    mars: generateProceduralMap(512, 10, 0xc1440e, 0x822604, false),
-    jupiter: generateProceduralMap(512, 5, 0xd39c7e, 0xc88b3a, true),
-    saturn: generateProceduralMap(512, 6, 0xc5ab6e, 0x9b7f43, true),
-    uranus: generateProceduralMap(512, 4, 0x4b70dd, 0x2b4b9b, true),
-    neptune: generateProceduralMap(512, 5, 0x274687, 0x162c5e, true)
-};
+// (Removed complex color generator to use pure vibrant material colors)
 
 // ==========================================
 // 5. THE LIVING SUN (GLSL Shaders)
@@ -221,10 +199,11 @@ const starMesh = new THREE.Points(starGeo, starMat);
 scene.add(starMesh);
 
 
-const ambientLight = new THREE.AmbientLight(0x222233, 0.5); 
+const ambientLight = new THREE.AmbientLight(0xffffff, 1.5); // BRIGHT ambient light so colors are always visible!
 scene.add(ambientLight);
 
-const sunLight = new THREE.PointLight(0xffeedd, 100, 500);
+const sunLight = new THREE.PointLight(0xffeedd, 5000, 1000); // Massive intensity for physically correct lighting
+sunLight.decay = 1.0; 
 sunLight.castShadow = true;
 sunLight.shadow.mapSize.width = 2048; 
 sunLight.shadow.mapSize.height = 2048;
@@ -244,7 +223,7 @@ solarSystem.add(sunMesh);
 function createOrbit(distance) {
     const ringGeometry = new THREE.RingGeometry(distance - 0.015, distance + 0.015, 128);
     const ringMaterial = new THREE.MeshBasicMaterial({
-        color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.05
+        color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.1
     });
     const orbitRing = new THREE.Mesh(ringGeometry, ringMaterial);
     orbitRing.rotation.x = Math.PI / 2;
@@ -254,22 +233,22 @@ function createOrbit(distance) {
 
 const planets = [];
 
-// Helper function to create standard planets with forced physical realism
-function buildPlanet(texture, distance, size, speed, hasRings = false, isGasGiant = false) {
+// Helper function to create standard planets with guaranteed vibrant colors
+function buildPlanet(planetColor, distance, size, speed, hasRings = false, isGasGiant = false) {
     const group = new THREE.Group();
     solarSystem.add(group);
     group.add(createOrbit(distance));
 
     const geometry = new THREE.SphereGeometry(size, 64, 64);
     
-    // Completely procedural materials guarantee correct colors!
+    // Pure color + bump map guarantees vibrant planets
     const material = new THREE.MeshStandardMaterial({
-        map: texture, // Uses our canvas-generated colored texture!
+        color: planetColor, 
         bumpMap: isGasGiant ? proceduralGasBump : proceduralRockBump,
-        bumpScale: isGasGiant ? 0.01 : 0.08,
+        bumpScale: isGasGiant ? 0.02 : 0.08,
         roughnessMap: proceduralRockBump,
-        roughness: 0.8,
-        metalness: 0.1
+        roughness: 0.7,
+        metalness: 0.2
     });
     
     const mesh = new THREE.Mesh(geometry, material);
@@ -297,8 +276,8 @@ function buildPlanet(texture, distance, size, speed, hasRings = false, isGasGian
     return { mesh, group };
 }
 
-buildPlanet(planetMaps.mercury, 2.5, 0.15, 0.025, false, false);
-buildPlanet(planetMaps.venus, 3.5, 0.35, 0.02, false, false);
+buildPlanet(0xaaaaaa, 2.5, 0.15, 0.025, false, false); // Mercury
+buildPlanet(0xe3bb76, 3.5, 0.35, 0.02, false, false); // Venus
 
 // Earth
 const earthGroup = new THREE.Group();
@@ -306,7 +285,11 @@ solarSystem.add(earthGroup);
 earthGroup.add(createOrbit(5.0));
 const earthGeometry = new THREE.SphereGeometry(0.4, 64, 64);
 const earthMaterial = new THREE.MeshStandardMaterial({
-    map: planetMaps.earth, bumpMap: proceduralRockBump, bumpScale: 0.05, roughness: 0.6, metalness: 0.1
+    color: 0x2b82c9, // Vibrant blue
+    bumpMap: proceduralRockBump, 
+    bumpScale: 0.05, 
+    roughness: 0.6, 
+    metalness: 0.1
 });
 const earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
 earthMesh.position.x = 5.0;
@@ -316,7 +299,7 @@ earthMesh.rotation.x = 0.4;
 earthGroup.add(earthMesh);
 planets.push({ mesh: earthMesh, group: earthGroup, speed: 0.015 });
 
-buildPlanet(planetMaps.mars, 6.5, 0.25, 0.012, false, false);
+buildPlanet(0xc1440e, 6.5, 0.25, 0.012, false, false); // Mars
 
 // ==========================================
 // REALISTIC ASTEROID BELT (InstancedMesh)
@@ -369,10 +352,10 @@ for (let i = 0; i < ASTEROID_COUNT; i++) {
 asteroidBeltGroup.add(instancedAsteroids);
 
 
-buildPlanet(planetMaps.jupiter, 9.0, 1.0, 0.008, false, true);
-buildPlanet(planetMaps.saturn, 12.5, 0.8, 0.005, true, true);
-buildPlanet(planetMaps.uranus, 16.0, 0.6, 0.003, false, true);
-buildPlanet(planetMaps.neptune, 19.0, 0.55, 0.002, false, true);
+buildPlanet(0xd39c7e, 9.0, 1.0, 0.008, false, true); // Jupiter
+buildPlanet(0xc5ab6e, 12.5, 0.8, 0.005, true, true); // Saturn
+buildPlanet(0x4b70dd, 16.0, 0.6, 0.003, false, true); // Uranus
+buildPlanet(0x274687, 19.0, 0.55, 0.002, false, true); // Neptune
 
 solarSystem.rotation.x = 0.2; 
 
