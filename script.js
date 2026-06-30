@@ -73,7 +73,8 @@ blackHoleGroup.add(eventHorizon);
 
 
 // 3c. Accretion Disk (Highly Realistic Dense Particle System)
-const diskParticleCount = 60000;
+// Reduced to 25,000 for mobile GPU safety, still looks incredibly dense and cinematic
+const diskParticleCount = 25000;
 const diskGeo = new THREE.BufferGeometry();
 const diskPos = new Float32Array(diskParticleCount * 3);
 const diskColors = new Float32Array(diskParticleCount * 3);
@@ -151,8 +152,16 @@ const outerHaloMat = new THREE.MeshBasicMaterial({
 const outerHalo = new THREE.Mesh(outerHaloGeo, outerHaloMat);
 blackHoleGroup.add(outerHalo);
 
-// Initial position
-blackHoleGroup.position.set(3, 0, -5);
+// Mobile Responsiveness
+const isMobile = window.innerWidth <= 768;
+
+// Initial position (centered and scaled down on mobile)
+if (isMobile) {
+    blackHoleGroup.position.set(0, 0, -5);
+    blackHoleGroup.scale.set(0.6, 0.6, 0.6);
+} else {
+    blackHoleGroup.position.set(3, 0, -5);
+}
 
 
 // ==========================================
@@ -208,7 +217,12 @@ const tl = gsap.timeline({
 });
 
 // As you scroll down, the camera dives slightly, and the accretion disk tilts aggressively
-tl.to(blackHoleGroup.position, { y: 6, z: -15, ease: "power1.inOut" }, 0);
+// Less aggressive vertical movement on mobile so it stays on screen
+tl.to(blackHoleGroup.position, { 
+    y: isMobile ? 3 : 6, 
+    z: -15, 
+    ease: "power1.inOut" 
+}, 0);
 // Tilt the disk almost flat while rotating it around its axis to simulate orbital motion
 tl.to(accretionDisk.rotation, { 
     x: Math.PI / 1.5, // Tilts aggressively
