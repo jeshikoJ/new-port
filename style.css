@@ -40,7 +40,7 @@ a {
 }
 
 /* WebGL Canvas */
-#blackholeCanvas {
+#webgl-canvas {
     position: fixed;
     top: 0;
     left: 0;

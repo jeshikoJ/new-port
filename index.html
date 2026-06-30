@@ -11,11 +11,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="style.css">
+    
+    <!-- ES Module Map for Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
 </head>
 <body>
     
-    <!-- Gargantua Canvas Background -->
-    <canvas id="blackholeCanvas"></canvas>
+    <!-- 3D WebGL Canvas Background -->
+    <canvas id="webgl-canvas"></canvas>
 
     <!-- Scrollable Content -->
     <main id="scroll-container">
@@ -198,6 +208,6 @@
     <script src="https://cdn.jsdelivr.net/gh/studio-freight/lenis@1.0.29/bundled/lenis.min.js"></script>
     
     <!-- Main Script -->
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>

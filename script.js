@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 // ==========================================
 // 1. Initialize Lenis for smooth scrolling
 // ==========================================
@@ -20,12 +22,199 @@ function raf(time) {
 requestAnimationFrame(raf);
 
 // ==========================================
-// 2. GSAP ScrollTrigger Integration
+// 2. Initialize Three.js Scene
+// ==========================================
+const canvas = document.querySelector('#webgl-canvas');
+const scene = new THREE.Scene();
+
+// Far clipping plane pushed back for the vast starfield
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+camera.position.z = 18;
+camera.position.y = 3; 
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({
+    canvas: canvas,
+    alpha: true,
+    antialias: true,
+    powerPreference: "high-performance"
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+// ==========================================
+// 3. Build the Cinematic 3D Black Hole
+// ==========================================
+const blackHoleGroup = new THREE.Group();
+scene.add(blackHoleGroup);
+
+// 3a. Deep Space Starfield
+const starGeo = new THREE.BufferGeometry();
+const starCount = 8000;
+const starPos = new Float32Array(starCount * 3);
+for(let i = 0; i < starCount * 3; i++) {
+    // Spread stars very far in the background
+    starPos[i] = (Math.random() - 0.5) * 600;
+}
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+const starMat = new THREE.PointsMaterial({
+    color: 0xffffff, size: 0.15, transparent: true, opacity: 0.6
+});
+const starMesh = new THREE.Points(starGeo, starMat);
+starMesh.position.z = -100;
+scene.add(starMesh);
+
+
+// 3b. Event Horizon (The perfectly black sphere)
+const eventHorizonGeo = new THREE.SphereGeometry(3.0, 64, 64);
+const eventHorizonMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+const eventHorizon = new THREE.Mesh(eventHorizonGeo, eventHorizonMat);
+blackHoleGroup.add(eventHorizon);
+
+
+// 3c. Accretion Disk (Highly Realistic Dense Particle System)
+const diskParticleCount = 60000;
+const diskGeo = new THREE.BufferGeometry();
+const diskPos = new Float32Array(diskParticleCount * 3);
+const diskColors = new Float32Array(diskParticleCount * 3);
+
+const innerColor = new THREE.Color(0xffeebb); // White hot core
+const midColor = new THREE.Color(0xff6600);   // Vibrant fiery orange
+const outerColor = new THREE.Color(0xaa0000); // Deep red
+
+for (let i = 0; i < diskParticleCount; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    // Concentrate particles near the center using power function
+    const distance = 3.5 + Math.pow(Math.random(), 2.0) * 8.5; // Radius 3.5 to 12.0
+    
+    // Calculate position with slight vertical thickness based on distance
+    const thickness = (Math.random() - 0.5) * (0.1 + (distance - 3.5) * 0.05);
+    
+    diskPos[i * 3] = Math.cos(angle) * distance;
+    diskPos[i * 3 + 1] = thickness;
+    diskPos[i * 3 + 2] = Math.sin(angle) * distance;
+    
+    // Color gradient based on distance
+    const normalizedDist = (distance - 3.5) / 8.5;
+    const pColor = new THREE.Color();
+    if (normalizedDist < 0.3) {
+        pColor.lerpColors(innerColor, midColor, normalizedDist / 0.3);
+    } else {
+        pColor.lerpColors(midColor, outerColor, (normalizedDist - 0.3) / 0.7);
+    }
+    
+    diskColors[i * 3] = pColor.r;
+    diskColors[i * 3 + 1] = pColor.g;
+    diskColors[i * 3 + 2] = pColor.b;
+}
+
+diskGeo.setAttribute('position', new THREE.BufferAttribute(diskPos, 3));
+diskGeo.setAttribute('color', new THREE.BufferAttribute(diskColors, 3));
+
+const diskMat = new THREE.PointsMaterial({
+    size: 0.05,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.8,
+    blending: THREE.AdditiveBlending, // Key for glowing effect without Bloom Pass
+    depthWrite: false
+});
+
+const accretionDisk = new THREE.Points(diskGeo, diskMat);
+// Initial cinematic tilt
+accretionDisk.rotation.x = Math.PI / 2.2;
+blackHoleGroup.add(accretionDisk);
+
+
+// 3d. Photon Ring & Gravitational Lensing Halos
+const photonRingGeo = new THREE.SphereGeometry(3.3, 64, 64);
+const photonRingMat = new THREE.MeshBasicMaterial({
+    color: 0xff7700,
+    transparent: true,
+    opacity: 0.2,
+    blending: THREE.AdditiveBlending,
+    side: THREE.BackSide,
+    depthWrite: false
+});
+const photonRing = new THREE.Mesh(photonRingGeo, photonRingMat);
+blackHoleGroup.add(photonRing);
+
+const outerHaloGeo = new THREE.SphereGeometry(4.0, 64, 64);
+const outerHaloMat = new THREE.MeshBasicMaterial({
+    color: 0xffaa55,
+    transparent: true,
+    opacity: 0.05,
+    blending: THREE.AdditiveBlending,
+    side: THREE.BackSide,
+    depthWrite: false
+});
+const outerHalo = new THREE.Mesh(outerHaloGeo, outerHaloMat);
+blackHoleGroup.add(outerHalo);
+
+// Initial position
+blackHoleGroup.position.set(3, 0, -5);
+
+
+// ==========================================
+// 4. Animation Loop
+// ==========================================
+let mouseX = 0, mouseY = 0;
+const windowHalfX = window.innerWidth / 2;
+const windowHalfY = window.innerHeight / 2;
+document.addEventListener('mousemove', (event) => {
+    mouseX = (event.clientX - windowHalfX);
+    mouseY = (event.clientY - windowHalfY);
+});
+
+const clock = new THREE.Clock();
+function animate() {
+    const elapsedTime = clock.getElapsedTime();
+    
+    // Core rotation
+    blackHoleGroup.rotation.y = Math.sin(elapsedTime * 0.1) * 0.05;
+    
+    // Fast accretion disk spin
+    accretionDisk.rotation.z -= 0.005;
+
+    // Slowly rotate the starfield
+    starMesh.rotation.y += 0.0005;
+
+    // Mouse parallax effect
+    camera.position.x += (mouseX * 0.003 - camera.position.x) * 0.05;
+    camera.position.y += (-mouseY * 0.003 + 3 - camera.position.y) * 0.05; 
+    camera.lookAt(0, 0, -5);
+
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+}
+animate();
+
+// ==========================================
+// 5. GSAP ScrollTrigger Integration
 // ==========================================
 gsap.registerPlugin(ScrollTrigger);
 lenis.on('scroll', ScrollTrigger.update);
 gsap.ticker.add((time) => { lenis.raf(time * 1000); });
 gsap.ticker.lagSmoothing(0, 0);
+
+// DRAMATIC ROTATION ON SCROLL
+const tl = gsap.timeline({
+    scrollTrigger: { 
+        trigger: "#scroll-container", 
+        start: "top top", 
+        end: "bottom bottom", 
+        scrub: 1.5 
+    }
+});
+
+// As you scroll down, the camera dives slightly, and the accretion disk tilts aggressively
+tl.to(blackHoleGroup.position, { y: 6, z: -15, ease: "power1.inOut" }, 0);
+// Tilt the disk almost flat while rotating it around its axis to simulate orbital motion
+tl.to(accretionDisk.rotation, { 
+    x: Math.PI / 1.5, // Tilts aggressively
+    y: Math.PI * 2,   // Full dramatic rotation on scroll
+    ease: "power2.inOut" 
+}, 0);
 
 // Animate content blocks fading in and sliding up
 const contentBlocks = document.querySelectorAll('.content-block');
@@ -43,6 +232,13 @@ contentBlocks.forEach((block) => {
     });
 });
 
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+});
+
 // Smooth Anchor Linking
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function (e) {
@@ -54,156 +250,3 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         });
     });
 });
-
-// ==========================================
-// 3. Gargantua Black Hole Background (2D Canvas)
-// ==========================================
-const canvas = document.getElementById('blackholeCanvas');
-const ctx = canvas.getContext('2d');
-
-let width = canvas.width = window.innerWidth;
-let height = canvas.height = window.innerHeight;
-
-let bhX = width / 2;
-let bhY = height / 2;
-const eventHorizonRadius = 45; 
-const diskRadiusMax = 260;
-
-// Starfield Configuration
-const stars = [];
-const numStars = 250;
-
-class Star {
-    constructor() {
-        this.reset();
-        // Randomize initial positions thoroughly
-        this.x = Math.random() * width;
-        this.y = Math.random() * height;
-    }
-
-    reset() {
-        // Spawn stars outside the horizon
-        let angle = Math.random() * Math.PI * 2;
-        let distance = Math.max(width, height) * (0.5 + Math.random() * 0.5);
-        this.x = bhX + Math.cos(angle) * distance;
-        this.y = bhY + Math.sin(angle) * distance;
-        this.size = Math.random() * 1.5 + 0.5;
-        this.speed = Math.random() * 0.5 + 0.2;
-        this.color = `rgba(255, 255, 255, ${Math.random() * 0.8 + 0.2})`;
-    }
-
-    update() {
-        let dx = bhX - this.x;
-        let dy = bhY - this.y;
-        let distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (distance < eventHorizonRadius + 5) {
-            this.reset();
-            return;
-        }
-
-        // Gravitational Pull / Gravitational Lensing effect simulation
-        let pullForce = (eventHorizonRadius * 12) / (distance * 0.05 + 1);
-        
-        // Orbital vector (perpendicular to pull)
-        let angle = Math.atan2(dy, dx);
-        this.x += Math.cos(angle) * this.speed + Math.sin(angle) * (pullForce * 0.05);
-        this.y += Math.sin(angle) * this.speed - Math.cos(angle) * (pullForce * 0.05);
-
-        // Basic directional drift
-        this.x -= this.speed * 0.3;
-    }
-
-    draw() {
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
-    }
-}
-
-// Initialize Starfield
-for (let i = 0; i < numStars; i++) {
-    stars.push(new Star());
-}
-
-// Handle window resizing
-window.addEventListener('resize', () => {
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight;
-    bhX = width / 2;
-    bhY = height / 2;
-});
-
-// Mouse interaction to shift the Black Hole
-window.addEventListener('mousemove', (e) => {
-    // Smoothly ease towards pointer to look natural
-    bhX += (e.clientX - bhX) * 0.05;
-    bhY += (e.clientY - bhY) * 0.05;
-});
-
-function drawAccretionDisk() {
-    ctx.save();
-    
-    // 1. Einstein Ring / Gravitational Lensing Halo (Backdrop)
-    let lensGradient = ctx.createRadialGradient(bhX, bhY, eventHorizonRadius, bhX, bhY, eventHorizonRadius * 2.2);
-    lensGradient.addColorStop(0, 'rgba(255, 130, 20, 0.9)');
-    lensGradient.addColorStop(0.2, 'rgba(255, 90, 10, 0.4)');
-    lensGradient.addColorStop(0.6, 'rgba(230, 50, 0, 0.15)');
-    lensGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    
-    ctx.fillStyle = lensGradient;
-    ctx.beginPath();
-    ctx.arc(bhX, bhY, eventHorizonRadius * 2.2, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 2. Interstellar Horizontal Accretion Disk Cross-Section
-    ctx.translate(bhX, bhY);
-    ctx.scale(1, 0.18); // Flattens the circles into 3D isometric disks
-    ctx.translate(-bhX, -bhY);
-
-    let diskGradient = ctx.createRadialGradient(bhX, bhY, eventHorizonRadius * 1.1, bhX, bhY, diskRadiusMax);
-    diskGradient.addColorStop(0, 'rgba(255, 230, 180, 0.95)');
-    diskGradient.addColorStop(0.1, 'rgba(255, 150, 30, 0.8)');
-    diskGradient.addColorStop(0.4, 'rgba(200, 60, 5, 0.3)');
-    diskGradient.addColorStop(0.8, 'rgba(100, 20, 0, 0.05)');
-    diskGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-    ctx.fillStyle = diskGradient;
-    ctx.beginPath();
-    ctx.arc(bhX, bhY, diskRadiusMax, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
-
-    // 3. The Shadow (Event Horizon Dark Core)
-    ctx.fillStyle = '#010103';
-    ctx.shadowColor = '#ff6a00';
-    ctx.shadowBlur = 15; // Creates the intense edge-glow profile
-    ctx.beginPath();
-    ctx.arc(bhX, bhY, eventHorizonRadius, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Reset shadow settings for background components
-    ctx.shadowBlur = 0; 
-}
-
-// Main Animation Loop
-function animateBH() {
-    // Subtle clear to allow trailing/blur mechanics if desired
-    ctx.fillStyle = 'rgba(2, 2, 8, 0.3)'; 
-    ctx.fillRect(0, 0, width, height);
-
-    // Draw Background Elements
-    stars.forEach(star => {
-        star.update();
-        star.draw();
-    });
-
-    // Layer the Cinematic Black Hole
-    drawAccretionDisk();
-
-    requestAnimationFrame(animateBH);
-}
-
-animateBH();
