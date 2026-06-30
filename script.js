@@ -230,7 +230,7 @@ function createOrbit(distance) {
 const planets = [];
 
 // Helper function to create standard planets with forced physical realism
-function buildPlanet(texture, distance, size, speed, hasRings = false, isGasGiant = false) {
+function buildPlanet(texture, fallbackColor, distance, size, speed, hasRings = false, isGasGiant = false) {
     const group = new THREE.Group();
     solarSystem.add(group);
     group.add(createOrbit(distance));
@@ -240,6 +240,7 @@ function buildPlanet(texture, distance, size, speed, hasRings = false, isGasGian
     // Use procedural bump mapping so it looks like a real physical object even if the CDN image fails
     const material = new THREE.MeshStandardMaterial({
         map: texture,
+        color: fallbackColor, // Explicit color so it always looks right!
         bumpMap: isGasGiant ? proceduralGas : proceduralRock,
         bumpScale: isGasGiant ? 0.01 : 0.08,
         roughnessMap: proceduralRock,
@@ -272,8 +273,8 @@ function buildPlanet(texture, distance, size, speed, hasRings = false, isGasGian
     return { mesh, group };
 }
 
-buildPlanet(textures.mercury, 2.5, 0.15, 0.025, false, false);
-buildPlanet(textures.venus, 3.5, 0.35, 0.02, false, false);
+buildPlanet(textures.mercury, 0x888888, 2.5, 0.15, 0.025, false, false);
+buildPlanet(textures.venus, 0xe3bb76, 3.5, 0.35, 0.02, false, false);
 
 // Earth (Cloud layer)
 const earthGroup = new THREE.Group();
@@ -281,7 +282,7 @@ solarSystem.add(earthGroup);
 earthGroup.add(createOrbit(5.0));
 const earthGeometry = new THREE.SphereGeometry(0.4, 64, 64);
 const earthMaterial = new THREE.MeshStandardMaterial({
-    map: textures.earth, bumpMap: proceduralRock, bumpScale: 0.05, roughness: 0.6, metalness: 0.1
+    map: textures.earth, color: 0x2b82c9, bumpMap: proceduralRock, bumpScale: 0.05, roughness: 0.6, metalness: 0.1
 });
 const earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
 earthMesh.position.x = 5.0;
@@ -300,7 +301,7 @@ cloudMesh.rotation.x = 0.4;
 earthGroup.add(cloudMesh);
 planets.push({ mesh: earthMesh, group: earthGroup, speed: 0.015, hasClouds: true, cloudMesh: cloudMesh });
 
-buildPlanet(textures.mars, 6.5, 0.25, 0.012, false, false);
+buildPlanet(textures.mars, 0xc1440e, 6.5, 0.25, 0.012, false, false);
 
 // ==========================================
 // REALISTIC ASTEROID BELT (InstancedMesh)
@@ -352,10 +353,10 @@ for (let i = 0; i < ASTEROID_COUNT; i++) {
 asteroidBeltGroup.add(instancedAsteroids);
 
 
-buildPlanet(textures.jupiter, 9.0, 1.0, 0.008, false, true);
-buildPlanet(textures.saturn, 12.5, 0.8, 0.005, true, true);
-buildPlanet(textures.uranus, 16.0, 0.6, 0.003, false, true);
-buildPlanet(textures.neptune, 19.0, 0.55, 0.002, false, true);
+buildPlanet(textures.jupiter, 0xd39c7e, 9.0, 1.0, 0.008, false, true);
+buildPlanet(textures.saturn, 0xc5ab6e, 12.5, 0.8, 0.005, true, true);
+buildPlanet(textures.uranus, 0x4b70dd, 16.0, 0.6, 0.003, false, true);
+buildPlanet(textures.neptune, 0x274687, 19.0, 0.55, 0.002, false, true);
 
 solarSystem.rotation.x = 0.2; 
 
@@ -381,8 +382,28 @@ function animate() {
         if (p.hasClouds) { p.cloudMesh.rotation.y += 0.012; }
     });
 
-    // Animate Asteroid Belt
-    asteroidBeltGroup.rotation.y += 0.002; // Slow rotation of the whole belt
+    // Animate individual asteroids
+    for (let i = 0; i < ASTEROID_COUNT; i++) {
+        const data = asteroidData[i];
+        data.angle += data.speed * 0.5; // Orbit
+        
+        dummy.position.set(Math.cos(data.angle) * data.distance, data.yOffset, Math.sin(data.angle) * data.distance);
+        
+        // Retrieve original scale by getting it before rotation updates (or keep scale roughly consistent)
+        // We will just do rotation and position
+        dummy.rotation.x += data.rotX;
+        dummy.rotation.y += data.rotY;
+        
+        // Re-apply a deterministic scale based on its index so it doesn't change
+        const scale = 0.5 + (i % 10) / 10 * 1.5;
+        dummy.scale.set(scale, scale * 0.9, scale);
+
+        dummy.updateMatrix();
+        instancedAsteroids.setMatrixAt(i, dummy.matrix);
+    }
+    instancedAsteroids.instanceMatrix.needsUpdate = true;
+    
+    asteroidBeltGroup.rotation.y += 0.001; // Entire belt drift
 
     camera.position.x += (mouseX * 0.002 - camera.position.x) * 0.05;
     camera.position.y += (-mouseY * 0.002 + 3 - camera.position.y) * 0.05; 
