@@ -46,9 +46,9 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const renderScene = new RenderPass(scene, camera);
 const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.9,  // strength
-    0.3,  // radius
-    0.15  // threshold
+    0.6,  // strength (reduced so planets don't turn white)
+    0.4,  // radius
+    0.85  // threshold (high so only the sun glows, not the planets!)
 );
 
 const composer = new EffectComposer(renderer);
@@ -199,16 +199,19 @@ const starMesh = new THREE.Points(starGeo, starMat);
 scene.add(starMesh);
 
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 1.5); // BRIGHT ambient light so colors are always visible!
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); 
 scene.add(ambientLight);
 
-const sunLight = new THREE.PointLight(0xffeedd, 5000, 1000); // Massive intensity for physically correct lighting
-sunLight.decay = 1.0; 
-sunLight.castShadow = true;
-sunLight.shadow.mapSize.width = 2048; 
-sunLight.shadow.mapSize.height = 2048;
-sunLight.shadow.bias = -0.001;
-solarSystem.add(sunLight);
+// Use a DirectionalLight so every planet gets the EXACT same bright, perfectly even light, preventing inner planets from blowing out to white!
+const sunLight = new THREE.DirectionalLight(0xffffff, 3.0); 
+sunLight.position.set(0, 0, 0); // Sun is at center
+sunLight.target.position.set(10, 0, 0); // Shine outwards
+scene.add(sunLight.target);
+// Add a second light shining the other way to illuminate everything evenly
+const sunLight2 = new THREE.DirectionalLight(0xffffff, 3.0); 
+sunLight2.position.set(0, 0, 0);
+sunLight2.target.position.set(-10, 0, 0);
+scene.add(sunLight2.target);
 
 // The Sun
 const sunUniforms = { time: { value: 0.0 } };
@@ -245,10 +248,10 @@ function buildPlanet(planetColor, distance, size, speed, hasRings = false, isGas
     const material = new THREE.MeshStandardMaterial({
         color: planetColor, 
         bumpMap: isGasGiant ? proceduralGasBump : proceduralRockBump,
-        bumpScale: isGasGiant ? 0.02 : 0.08,
+        bumpScale: isGasGiant ? 0.02 : 0.1,
         roughnessMap: proceduralRockBump,
-        roughness: 0.7,
-        metalness: 0.2
+        roughness: 0.5, // lower roughness for more vibrant reflection
+        metalness: 0.0 // 0 metalness ensures true color shows
     });
     
     const mesh = new THREE.Mesh(geometry, material);
@@ -276,8 +279,8 @@ function buildPlanet(planetColor, distance, size, speed, hasRings = false, isGas
     return { mesh, group };
 }
 
-buildPlanet(0xaaaaaa, 2.5, 0.15, 0.025, false, false); // Mercury
-buildPlanet(0xe3bb76, 3.5, 0.35, 0.02, false, false); // Venus
+buildPlanet(0xff6600, 2.5, 0.15, 0.025, false, false); // Mercury (Vibrant Orange)
+buildPlanet(0xffcc00, 3.5, 0.35, 0.02, false, false); // Venus (Vibrant Yellow/Gold)
 
 // Earth
 const earthGroup = new THREE.Group();
@@ -285,11 +288,11 @@ solarSystem.add(earthGroup);
 earthGroup.add(createOrbit(5.0));
 const earthGeometry = new THREE.SphereGeometry(0.4, 64, 64);
 const earthMaterial = new THREE.MeshStandardMaterial({
-    color: 0x2b82c9, // Vibrant blue
+    color: 0x0088ff, // SUPER Vibrant Blue
     bumpMap: proceduralRockBump, 
     bumpScale: 0.05, 
-    roughness: 0.6, 
-    metalness: 0.1
+    roughness: 0.5, 
+    metalness: 0.0
 });
 const earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
 earthMesh.position.x = 5.0;
@@ -299,7 +302,7 @@ earthMesh.rotation.x = 0.4;
 earthGroup.add(earthMesh);
 planets.push({ mesh: earthMesh, group: earthGroup, speed: 0.015 });
 
-buildPlanet(0xc1440e, 6.5, 0.25, 0.012, false, false); // Mars
+buildPlanet(0xff0000, 6.5, 0.25, 0.012, false, false); // Mars (Vibrant Red)
 
 // ==========================================
 // REALISTIC ASTEROID BELT (InstancedMesh)
@@ -352,10 +355,10 @@ for (let i = 0; i < ASTEROID_COUNT; i++) {
 asteroidBeltGroup.add(instancedAsteroids);
 
 
-buildPlanet(0xd39c7e, 9.0, 1.0, 0.008, false, true); // Jupiter
-buildPlanet(0xc5ab6e, 12.5, 0.8, 0.005, true, true); // Saturn
-buildPlanet(0x4b70dd, 16.0, 0.6, 0.003, false, true); // Uranus
-buildPlanet(0x274687, 19.0, 0.55, 0.002, false, true); // Neptune
+buildPlanet(0xff9900, 9.0, 1.0, 0.008, false, true); // Jupiter (Vibrant Orange)
+buildPlanet(0xffdd55, 12.5, 0.8, 0.005, true, true); // Saturn (Vibrant Light Yellow)
+buildPlanet(0x00ffff, 16.0, 0.6, 0.003, false, true); // Uranus (Vibrant Cyan)
+buildPlanet(0x0000ff, 19.0, 0.55, 0.002, false, true); // Neptune (Vibrant Dark Blue)
 
 solarSystem.rotation.x = 0.2; 
 
