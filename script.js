@@ -279,8 +279,8 @@ function buildPlanet(planetColor, distance, size, speed, hasRings = false, isGas
     return { mesh, group };
 }
 
-buildPlanet(0xff6600, 2.5, 0.15, 0.025, false, false); // Mercury (Vibrant Orange)
-buildPlanet(0xffcc00, 3.5, 0.35, 0.02, false, false); // Venus (Vibrant Yellow/Gold)
+buildPlanet(0x8c8c94, 2.5, 0.15, 0.025, false, false); // Mercury (Muted grey)
+buildPlanet(0xe3bb76, 3.5, 0.35, 0.02, false, false); // Venus (Pale tan/yellow)
 
 // Earth
 const earthGroup = new THREE.Group();
@@ -288,11 +288,11 @@ solarSystem.add(earthGroup);
 earthGroup.add(createOrbit(5.0));
 const earthGeometry = new THREE.SphereGeometry(0.4, 64, 64);
 const earthMaterial = new THREE.MeshStandardMaterial({
-    color: 0x0088ff, // SUPER Vibrant Blue
+    color: 0x1f618d, // Realistic deep ocean blue
     bumpMap: proceduralRockBump, 
     bumpScale: 0.05, 
-    roughness: 0.5, 
-    metalness: 0.0
+    roughness: 0.6, 
+    metalness: 0.1
 });
 const earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
 earthMesh.position.x = 5.0;
@@ -302,7 +302,7 @@ earthMesh.rotation.x = 0.4;
 earthGroup.add(earthMesh);
 planets.push({ mesh: earthMesh, group: earthGroup, speed: 0.015 });
 
-buildPlanet(0xff0000, 6.5, 0.25, 0.012, false, false); // Mars (Vibrant Red)
+buildPlanet(0xa1523b, 6.5, 0.25, 0.012, false, false); // Mars (Dusty rust red)
 
 // ==========================================
 // REALISTIC ASTEROID BELT (InstancedMesh)
@@ -355,10 +355,10 @@ for (let i = 0; i < ASTEROID_COUNT; i++) {
 asteroidBeltGroup.add(instancedAsteroids);
 
 
-buildPlanet(0xff9900, 9.0, 1.0, 0.008, false, true); // Jupiter (Vibrant Orange)
-buildPlanet(0xffdd55, 12.5, 0.8, 0.005, true, true); // Saturn (Vibrant Light Yellow)
-buildPlanet(0x00ffff, 16.0, 0.6, 0.003, false, true); // Uranus (Vibrant Cyan)
-buildPlanet(0x0000ff, 19.0, 0.55, 0.002, false, true); // Neptune (Vibrant Dark Blue)
+buildPlanet(0xc8aa91, 9.0, 1.0, 0.008, false, true); // Jupiter (Muted beige/tan)
+buildPlanet(0xc5ab6e, 12.5, 0.8, 0.005, true, true); // Saturn (Pale gold/tan)
+buildPlanet(0xa9dbde, 16.0, 0.6, 0.003, false, true); // Uranus (Pale icy cyan)
+buildPlanet(0x3d5b99, 19.0, 0.55, 0.002, false, true); // Neptune (Deep muted blue)
 
 solarSystem.rotation.x = 0.2; 
 
