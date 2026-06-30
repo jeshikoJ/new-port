@@ -93,105 +93,58 @@ const eventHorizon = new THREE.Mesh(eventHorizonGeo, eventHorizonMat);
 blackHoleGroup.add(eventHorizon);
 
 
-// 4c. Accretion Disk (Swirling Fire Shader)
-// We use a Ring Geometry placed around the sphere
-const diskGeo = new THREE.RingGeometry(3.5, 9.0, 128, 64);
-diskGeo.rotateX(-Math.PI / 2); // Lay it flat
+// 4c. Accretion Disk (Particle System for robust, cinematic fire)
+// We will use tens of thousands of glowing particles to form the swirling gas
+const diskParticleCount = 40000;
+const diskGeo = new THREE.BufferGeometry();
+const diskPos = new Float32Array(diskParticleCount * 3);
+const diskColors = new Float32Array(diskParticleCount * 3);
 
-// GLSL Shader for the swirling, fiery accretion disk
-const diskVertexShader = `
-    varying vec2 vUv;
-    varying vec3 vPosition;
-    void main() {
-        vUv = uv;
-        vPosition = position;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+const innerColor = new THREE.Color(0xffffff); // White hot core
+const midColor = new THREE.Color(0xff6600);   // Vibrant fiery orange
+const outerColor = new THREE.Color(0xaa0000); // Deep red
+
+for (let i = 0; i < diskParticleCount; i++) {
+    // Random angle and distance (concentrated near the center, fading out)
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 3.5 + Math.pow(Math.random(), 1.5) * 5.5; // Radius 3.5 to 9.0
+    
+    // Calculate position with slight vertical thickness based on distance
+    const thickness = (Math.random() - 0.5) * (0.2 + (distance - 3.5) * 0.1);
+    
+    diskPos[i * 3] = Math.cos(angle) * distance;
+    diskPos[i * 3 + 1] = thickness;
+    diskPos[i * 3 + 2] = Math.sin(angle) * distance;
+    
+    // Calculate color based on distance
+    const normalizedDist = (distance - 3.5) / 5.5;
+    const pColor = new THREE.Color();
+    if (normalizedDist < 0.4) {
+        pColor.lerpColors(innerColor, midColor, normalizedDist / 0.4);
+    } else {
+        pColor.lerpColors(midColor, outerColor, (normalizedDist - 0.4) / 0.6);
     }
-`;
+    
+    diskColors[i * 3] = pColor.r;
+    diskColors[i * 3 + 1] = pColor.g;
+    diskColors[i * 3 + 2] = pColor.b;
+}
 
-const diskFragmentShader = `
-    varying vec2 vUv;
-    varying vec3 vPosition;
-    uniform float time;
+diskGeo.setAttribute('position', new THREE.BufferAttribute(diskPos, 3));
+diskGeo.setAttribute('color', new THREE.BufferAttribute(diskColors, 3));
 
-    // Simplex 2D noise
-    vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
-    float snoise(vec2 v){
-        const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
-        vec2 i  = floor(v + dot(v, C.yy) );
-        vec2 x0 = v -   i + dot(i, C.xx);
-        vec2 i1;
-        i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-        vec4 x12 = x0.xyxy + C.xxzz;
-        x12.xy -= i1;
-        i = mod(i, 289.0);
-        vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 )) + i.x + vec3(0.0, i1.x, 1.0 ));
-        vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
-        m = m*m ;
-        m = m*m ;
-        vec3 x = 2.0 * fract(p * C.www) - 1.0;
-        vec3 h = abs(x) - 0.5;
-        vec3 ox = floor(x + 0.5);
-        vec3 a0 = x - ox;
-        m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
-        vec3 g;
-        g.x  = a0.x  * x0.x  + h.x  * x0.y;
-        g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-        return 130.0 * dot(m, g);
-    }
-
-    void main() {
-        // Calculate distance from center of the ring
-        float dist = length(vPosition.xz);
-        
-        // Normalize distance (3.5 to 9.0) -> (0.0 to 1.0)
-        float normalizedDist = (dist - 3.5) / (9.0 - 3.5);
-        
-        // Swirling angle based on position and time
-        float angle = atan(vPosition.z, vPosition.x);
-        
-        // High speed rotation near the center, slower at the edges (Keplerian dynamics)
-        float speed = 2.0 / (normalizedDist + 0.1);
-        float swirledAngle = angle - time * speed;
-        
-        // Create fiery noise bands
-        float noise = snoise(vec2(swirledAngle * 4.0, normalizedDist * 10.0 - time));
-        float noise2 = snoise(vec2(swirledAngle * 8.0 + time, normalizedDist * 20.0));
-        
-        float fireIntensity = (noise * 0.5 + 0.5) * (noise2 * 0.5 + 0.5);
-        
-        // Smoothly fade out at the inner and outer edges
-        float alpha = smoothstep(0.0, 0.1, normalizedDist) * smoothstep(1.0, 0.5, normalizedDist);
-        
-        // Colors: Intense white/blue at the inner edge, fading to deep orange/red at the outer edge
-        vec3 innerColor = vec3(1.0, 0.9, 0.7); // Superheated white-hot core
-        vec3 midColor = vec3(1.0, 0.4, 0.0);   // Vibrant fiery orange
-        vec3 outerColor = vec3(0.5, 0.0, 0.1); // Deep red fading out
-        
-        vec3 color = mix(innerColor, midColor, smoothstep(0.0, 0.4, normalizedDist));
-        color = mix(color, outerColor, smoothstep(0.4, 1.0, normalizedDist));
-        
-        // Boost brightness based on fire intensity
-        color *= fireIntensity * 3.0;
-        
-        gl_FragColor = vec4(color, alpha * fireIntensity * 1.5);
-    }
-`;
-
-const diskUniforms = { time: { value: 0.0 } };
-const diskMat = new THREE.ShaderMaterial({
-    vertexShader: diskVertexShader,
-    fragmentShader: diskFragmentShader,
-    uniforms: diskUniforms,
+const diskMat = new THREE.PointsMaterial({
+    size: 0.05,
+    vertexColors: true,
     transparent: true,
-    side: THREE.DoubleSide,
-    blending: THREE.AdditiveBlending, // Makes the fire glow intensely against the background
+    opacity: 0.6,
+    blending: THREE.AdditiveBlending,
     depthWrite: false
 });
 
-const accretionDisk = new THREE.Mesh(diskGeo, diskMat);
+const accretionDisk = new THREE.Points(diskGeo, diskMat);
 // Tilt the disk for a cinematic angle
-accretionDisk.rotation.x = Math.PI / 2.2;
+accretionDisk.rotation.x = 0.2;
 blackHoleGroup.add(accretionDisk);
 
 
@@ -239,12 +192,11 @@ const clock = new THREE.Clock();
 function animate() {
     const elapsedTime = clock.getElapsedTime();
     
-    // Update Shader Time for the Swirling Fire
-    diskUniforms.time.value = elapsedTime * 0.4;
-    
     // Subtle wobbling rotation of the entire black hole system
     blackHoleGroup.rotation.y = Math.sin(elapsedTime * 0.1) * 0.1;
     blackHoleGroup.rotation.z = Math.cos(elapsedTime * 0.15) * 0.05;
+
+    accretionDisk.rotation.y = elapsedTime * 0.2;
 
     // Slowly rotate the starfield
     starMesh.rotation.y += 0.0005;
