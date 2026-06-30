@@ -46,9 +46,9 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const renderScene = new RenderPass(scene, camera);
 const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.6,  // strength (reduced so planets don't turn white)
-    0.4,  // radius
-    0.85  // threshold (high so only the sun glows, not the planets!)
+    0.9,  // strength
+    0.3,  // radius
+    0.15  // threshold
 );
 
 const composer = new EffectComposer(renderer);
@@ -214,19 +214,15 @@ const starMesh = new THREE.Points(starGeo, starMat);
 scene.add(starMesh);
 
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); 
+const ambientLight = new THREE.AmbientLight(0x222233, 0.5); 
 scene.add(ambientLight);
 
-// Use a DirectionalLight so every planet gets the EXACT same bright, perfectly even light, preventing inner planets from blowing out to white!
-const sunLight = new THREE.DirectionalLight(0xffffff, 3.0); 
-sunLight.position.set(0, 0, 0); // Sun is at center
-sunLight.target.position.set(10, 0, 0); // Shine outwards
-scene.add(sunLight.target);
-// Add a second light shining the other way to illuminate everything evenly
-const sunLight2 = new THREE.DirectionalLight(0xffffff, 3.0); 
-sunLight2.position.set(0, 0, 0);
-sunLight2.target.position.set(-10, 0, 0);
-scene.add(sunLight2.target);
+const sunLight = new THREE.PointLight(0xffeedd, 100, 500);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.width = 2048; 
+sunLight.shadow.mapSize.height = 2048;
+sunLight.shadow.bias = -0.001;
+solarSystem.add(sunLight);
 
 // The Sun
 const sunUniforms = { time: { value: 0.0 } };
